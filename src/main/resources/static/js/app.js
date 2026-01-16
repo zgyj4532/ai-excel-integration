@@ -520,13 +520,70 @@ function handleAiFeature(feature) {
     }
 }
 
-// 切换WebSocket
-function toggleWebSocket() {
+// 切换WebSocket（启用时自动尝试将当前工作区设为公开）
+async function toggleWebSocket() {
     if (wsConnected) {
         disconnectWebSocket();
         elements.toggleWebSocketBtn.innerHTML = '<i class="bi bi-broadcast me-1"></i>实时模式';
         addResponseMessage('WebSocket已断开', 'system');
     } else {
+        // 当启用实时模式时，确保使用属于当前 userId 的工作区：
+        // - 若当前工作区属于其他用户，则切换到该用户的工作区（存在则切换，否者创建新的工作区）
+        const userId = localStorage.getItem('userId') || '';
+        if (!userId) {
+            addResponseMessage('未找到用户ID，无法设置工作区公开', 'system');
+            return;
+        }
+
+        let targetWorkspace = currentWorkspace;
+
+        // 如果当前工作区不存在或不属于当前用户，尝试获取/创建用户自己的工作区
+        if (!targetWorkspace || targetWorkspace.userId !== userId) {
+            try {
+                const listResp = await fetch(`/api/files/workspaces/user/${encodeURIComponent(userId)}`);
+                const listJson = await listResp.json();
+                if (listJson && listJson.success && listJson.data && listJson.data.length > 0) {
+                    targetWorkspace = listJson.data[0];
+                    addResponseMessage(`切换到您的工作区 '${targetWorkspace.name}' (ID:${targetWorkspace.id})`, 'system');
+                } else {
+                    // 创建新的工作区
+                    const workspaceData = { name: '我的工作区', userId: userId, description: '实时模式默认工作区' };
+                    const createResp = await fetch('/api/files/workspace/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(workspaceData)
+                    });
+                    const createJson = await createResp.json();
+                    if (createJson && createJson.success) {
+                        targetWorkspace = createJson.data;
+                        addResponseMessage(`已为您创建工作区 '${targetWorkspace.name}' (ID:${targetWorkspace.id})`, 'system');
+                    } else {
+                        addResponseMessage('无法为您创建工作区，无法启用实时模式', 'system');
+                        return;
+                    }
+                }
+            } catch (err) {
+                addResponseMessage(`获取或创建工作区时出错: ${err.message}`, 'system');
+                return;
+            }
+        }
+
+        // 将目标工作区设为公开
+        try {
+            const resp = await fetch(`/api/files/workspace/${targetWorkspace.id}/set-public?userId=${encodeURIComponent(userId)}&isPublic=true`, { method: 'POST' });
+            const json = await resp.json();
+            if (json && json.success) {
+                addResponseMessage(`已将工作区 '${targetWorkspace.name}' 设为公开`, 'system');
+                targetWorkspace.isPublic = true;
+                currentWorkspace = targetWorkspace; // 切换当前工作区
+            } else {
+                addResponseMessage(`设置工作区公开失败: ${json && json.error ? json.error : '未知错误'}`, 'system');
+                // 如果无法设置公开也继续连接 WebSocket，但上传仍会被拒绝
+            }
+        } catch (err) {
+            addResponseMessage(`设置工作区公开时出错: ${err.message}`, 'system');
+        }
+
         connectWebSocket();
         elements.toggleWebSocketBtn.innerHTML = '<i class="bi bi-broadcast me-1"></i>实时模式';
     }
