@@ -64,9 +64,9 @@
 
             <!-- AI Stream and Steps: shown when aiActive -->
             <div v-if="aiActive" style="display:flex; flex-direction:column; gap:8px;">
-              <div class="ai-stream-container">
-                <ChatBubbleList :messages="aiMessages" />
-              </div>
+                <div class="ai-stream-container">
+                  <ChatBubbleList :messages="aiMessages" :executingIds="executingIds" :appliedIds="appliedIds" @apply-token="handleApplyToken" @skip-token="handleSkipToken" />
+                </div>
               <!-- steps are included inside aiMessages as a single card message -->
             </div>
 
@@ -83,7 +83,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import * as XLSX from 'xlsx'
 import { useI18n } from 'vue-i18n'
 import FileUploader from '../components/FileUploader.vue'
 import DataTable from '../components/DataTable.vue'
@@ -92,11 +93,14 @@ import ChatInput from '../components/ChatInput.vue'
 import Analysis from './Analysis.vue'
 import Templates from './Templates.vue'
 import { getExcelDataPreview, processExcelWithAI, processExcelAndChat, uploadExcel, processExcelWithAIDownload, chat, runAllApis } from '../services/aiService'
+import { handleUserChat } from '../services/chatManager'
 
 const fileName = ref('')
 const tableData = ref<Array<string[]>>([])
 const aiMessages = ref<Array<{ id: number; role: string; text: string; placeholder?: boolean }>>([])
 const aiActive = ref(false)
+const executingIds = ref<string[]>([])
+const appliedIds = ref<string[]>([])
 const lastFile = ref<File | null>(null)
 const lastCommand = ref<string>('')
 const lastError = ref<string | null>(null)
@@ -106,6 +110,44 @@ const chatHistory = ref<Array<{ id: number, command: string, timestamp: number, 
 const { t } = useI18n()
 const aiInput = ref<any>(null)
 const activeTab = ref('overview')
+const autoSaveEnabled = ref(true)
+const AUTO_SAVE_DEBOUNCE_MS = 2000
+let autosaveTimer: number | null = null
+const lastSavedFileId = ref<string | null>(null)
+
+async function uploadTableToServer(wbout: Uint8Array | ArrayBuffer, name: string) {
+  try {
+    const blob = new Blob([wbout as any], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const form = new FormData()
+    form.append('file', new File([blob], name, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+    const resp = await fetch('/api/excel/save', { method: 'POST', body: form })
+    if (!resp.ok) throw new Error('upload failed')
+    const j = await resp.json().catch(() => null)
+    if (j && j.fileId) {
+      lastSavedFileId.value = j.fileId
+    }
+    return j
+  } catch (e) {
+    return Promise.reject(e)
+  }
+}
+
+function scheduleAutoSave() {
+  try {
+    if (autosaveTimer) clearTimeout(autosaveTimer)
+    autosaveTimer = window.setTimeout(() => {
+      try {
+        const aoa = tableData.value || []
+        const ws = XLSX.utils.aoa_to_sheet(aoa)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+        const name = fileName.value ? `autosaved_${fileName.value}` : `autosave_${Date.now()}.xlsx`
+        uploadTableToServer(wbout, name).catch(e => console.warn('autosave upload failed', e))
+      } catch (e) { console.warn('autosave failed', e) }
+    }, AUTO_SAVE_DEBOUNCE_MS) as unknown as number
+  } catch (e) { console.warn('scheduleAutoSave error', e) }
+}
 
 async function onFileLoaded(payload: { name: string; data: string[][]; file?: File }) {
   fileName.value = payload.name
@@ -140,76 +182,45 @@ async function onRunCommand(command: string) {
   lastError.value = null
   failedCommand.value = null
   lastCommand.value = command
-  // save a snapshot of current messages to history (do not reset aiMessages)
+  // snapshot of current messages for history
   chatHistory.value.push({ id: Date.now(), command, timestamp: Date.now(), messages: aiMessages.value.map(m => m.text) })
 
-  // push the user message
-  aiMessages.value.push({ id: Date.now(), role: 'user', text: command })
+  // helper callbacks passed into chatManager
+  function pushUserMessage(msg: { id: number; role: string; text: string; placeholder?: boolean }) {
+    aiMessages.value.push(msg)
+  }
 
-  // If we have a file uploaded, call backend; otherwise fall back to local simulation
-  if (lastFile.value) {
-    const placeholderId = Date.now() + Math.floor(Math.random() * 1000)
-    aiMessages.value.push({ id: placeholderId, role: 'ai', text: '', placeholder: true })
-    try {
-      const { preview, aiResp } = await processExcelAndChat(lastFile.value, command)
-      // If preview contains parsed array data, replace the tableData shown in the UI
-      try {
-        if (preview) {
-          if (Array.isArray(preview.data)) {
-            tableData.value = preview.data as string[][]
-          } else if (preview.excelDataPreview && typeof preview.excelDataPreview === 'string') {
-            // try parse JSON-encoded preview, otherwise leave as-is
-            try {
-              const maybe = JSON.parse(preview.excelDataPreview)
-              if (Array.isArray(maybe)) tableData.value = maybe as string[][]
-            } catch (e) {
-              // not JSON, ignore
-            }
-          }
-        }
-      } catch (e) { /* ignore table update errors */ }
+  function pushAiPlaceholder(msg: { id: number; role: string; text: string; placeholder?: boolean }) {
+    aiMessages.value.push(msg)
+    return msg.id
+  }
 
-      // Use aiResp.aiResponse if available (contains command sequence or text), fallback to message/result
-      const aiText = (aiResp && (aiResp.aiResponse || aiResp.message || aiResp.result || JSON.stringify(aiResp))) as string
-      const idx = aiMessages.value.findIndex(m => m.id === placeholderId)
-      if (idx !== -1) aiMessages.value.splice(idx, 1, { id: Date.now(), role: 'ai', text: aiText })
-      else aiMessages.value.push({ id: Date.now(), role: 'ai', text: aiText })
-    } catch (err:any) {
-      const idx = aiMessages.value.findIndex(m => m.id === placeholderId)
-      const msg = (err && (err.body?.error || err.message)) || '服务端错误'
-      // if preview was attached to error, update table and show a short note
-      if (err && err.preview) {
-        try {
-          const p = err.preview
-          if (Array.isArray(p.data)) tableData.value = p.data as string[][]
-          else if (p.excelDataPreview && typeof p.excelDataPreview === 'string') {
-            try { const maybe = JSON.parse(p.excelDataPreview); if (Array.isArray(maybe)) tableData.value = maybe as string[][] } catch (e) {}
-          }
-        } catch (e) {}
-      }
-      lastError.value = msg
-      failedCommand.value = command
-      if (idx !== -1) aiMessages.value.splice(idx, 1, { id: Date.now(), role: 'ai', text: msg })
-      else aiMessages.value.push({ id: Date.now(), role: 'ai', text: msg })
+  function replaceAiMessage(placeholderId: number, newMsg: { id?: number; role?: string; text?: string }) {
+    const idx = aiMessages.value.findIndex(m => m.id === placeholderId)
+    if (idx !== -1) {
+      aiMessages.value.splice(idx, 1, { id: newMsg.id || Date.now(), role: newMsg.role || 'ai', text: newMsg.text || '' })
+    } else {
+      aiMessages.value.push({ id: newMsg.id || Date.now(), role: newMsg.role || 'ai', text: newMsg.text || '' })
     }
-  } else {
-    // No uploaded file: call backend chat API
-    const placeholderId = Date.now() + Math.floor(Math.random() * 1000)
-    aiMessages.value.push({ id: placeholderId, role: 'ai', text: '', placeholder: true })
-    try {
-      const resp = await chat(command)
-      const text = (resp && (resp.message || resp.result || JSON.stringify(resp))) as string
-      const idx = aiMessages.value.findIndex(m => m.id === placeholderId)
-      if (idx !== -1) aiMessages.value.splice(idx, 1, { id: Date.now(), role: 'ai', text })
-      else aiMessages.value.push({ id: Date.now(), role: 'ai', text })
-    } catch (err:any) {
-      const idx = aiMessages.value.findIndex(m => m.id === placeholderId)
-      const msg = (err && (err.body?.error || err.message)) || '服务端错误'
-      lastError.value = msg
-      failedCommand.value = command
-      if (idx !== -1) aiMessages.value.splice(idx, 1, { id: Date.now(), role: 'ai', text: msg })
-      else aiMessages.value.push({ id: Date.now(), role: 'ai', text: msg })
-    }
+  }
+
+  function setTablePreview(data: string[][]) {
+    try { tableData.value = data } catch (e) { /* ignore */ }
+  }
+
+  try {
+    await handleUserChat({
+      command,
+      lastFile: lastFile.value,
+      lastSavedFileId: lastSavedFileId.value,
+      pushUserMessage: pushUserMessage as any,
+      pushAiPlaceholder: pushAiPlaceholder as any,
+      replaceAiMessage: replaceAiMessage as any,
+      setTablePreview
+    })
+  } catch (err:any) {
+    lastError.value = (err && (err.body?.error || err.message)) || '服务端错误'
+    failedCommand.value = command
   }
 }
 
@@ -219,7 +230,7 @@ async function onExport() {
     return
   }
   try {
-    const blob = await processExcelWithAIDownload(lastFile.value, lastCommand.value)
+    const blob = await processExcelWithAIDownload(lastFile.value, lastCommand.value, lastSavedFileId.value || undefined)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -290,6 +301,34 @@ function saveToStorage() {
   } catch (e) { }
 }
 
+// Watch table changes to trigger local storage save and debounced server autosave
+watch(tableData, () => {
+  saveToStorage()
+  if (autoSaveEnabled.value) scheduleAutoSave()
+}, { deep: true })
+
+async function saveTableAsExcel() {
+  // Create workbook and upload to backend storage without triggering a local download
+  try {
+    const aoa = tableData.value || []
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    const name = fileName.value ? `modified_${fileName.value}` : `modified_${Date.now()}.xlsx`
+    try {
+      const resp = await uploadTableToServer(wbout, name)
+      return resp
+    } catch (e) {
+      console.warn('excel save/upload failed', e)
+      throw e
+    }
+  } catch (e) {
+    console.error('saveTableAsExcel error', e)
+    throw e
+  }
+}
+
 function loadFromStorage() {
   try {
     const s = localStorage.getItem('aiexcel_workspace_file')
@@ -333,10 +372,13 @@ function applyCommands(raw: string) {
       }
       continue
     }
-    const m2 = ln.match(/\[APPLY_FORMULA:([A-Z]+\d+):=(.+)\]/i)
+    // support both [APPLY_FORMULA:F2:=SUM(...)] and [APPLY_FORMULA:F2:SUM(...)]
+    const m2 = ln.match(/\[APPLY_FORMULA:([A-Z]+\d+):=?(.+)\]/i)
     if (m2) {
       const cellRef = m2[1]
-      const expr = m2[2].trim()
+      // strip optional leading '=' from expression
+      let expr = m2[2].trim()
+      if (expr.startsWith('=')) expr = expr.slice(1).trim()
       const targetCol = colLetterToIndex(cellRef.replace(/\d+/, ''))
       const targetRow = Number(cellRef.replace(/[^0-9]/g, ''))
 
@@ -389,6 +431,174 @@ function applyCommands(raw: string) {
 }
 
 function onApplyCommands(m: string) { applyCommands(m) }
+
+async function handleApply(cmd: string, id?: number) {
+  const msgId = id || Date.now()
+  const msgKey = String(msgId)
+  if (!executingIds.value.includes(msgKey)) executingIds.value.push(msgKey)
+  if (!appliedIds.value.includes(msgKey)) appliedIds.value.push(msgKey)
+  try {
+    const full = String(cmd || '')
+    // find all APPLY_FORMULA tokens in order
+    const tokenRegex = /(\[APPLY_FORMULA:[^\]]+\])/ig
+    const tokens = Array.from(full.matchAll(tokenRegex)).map(m => m[1])
+
+    // helper: find nearest sentence containing token, fallback to full message
+    function findSentenceForToken(message: string, token: string) {
+      const parts = message.split(/(?<=。|\.|\n)/g).map(s => s.trim()).filter(Boolean)
+      for (const p of parts) {
+        if (p.indexOf(token) !== -1) return p
+      }
+      return message
+    }
+
+    const origIdx = aiMessages.value.findIndex(x => x.id === msgId)
+    if (tokens.length > 1) {
+      // Output word/token pairs in order, then execute each — merge into original AI message when possible
+      for (const tok of tokens) {
+        const inner = (tok.match(/\[APPLY_FORMULA:([^\]]+)\]/i) || [])[1] || tok
+        let word = findSentenceForToken(full, tok)
+        // remove the bracketed token from displayed word to avoid re-parsing
+        word = word.replace(tok, '').trim()
+        const wordLine = `word: ${word}`
+        const tokenLine = `token: ${inner}`
+
+        if (origIdx !== -1) {
+          const prev = aiMessages.value[origIdx].text || ''
+          aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n\n${wordLine}\n${tokenLine}` })
+        } else {
+          aiMessages.value.push({ id: Date.now(), role: 'ai', text: `${wordLine}\n${tokenLine}` })
+        }
+
+        await new Promise(res => setTimeout(res, 200))
+
+        // execute token (applyCommands expects bracketed form, so pass tok)
+        try {
+          applyCommands(tok)
+          try { await saveTableAsExcel() } catch (e) { /* ignore save errors */ }
+          const doneLine = `已执行: ${inner}`
+          if (origIdx !== -1) {
+            const prev2 = aiMessages.value[origIdx].text || ''
+            aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev2}\n${doneLine}` })
+          } else {
+            aiMessages.value.push({ id: Date.now(), role: 'ai', text: doneLine })
+          }
+        } catch (e:any) {
+          const failLine = `执行失败: ${inner} -> ${(e && e.message) || e}`
+          if (origIdx !== -1) {
+            const prev2 = aiMessages.value[origIdx].text || ''
+            aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev2}\n${failLine}` })
+          } else {
+            aiMessages.value.push({ id: Date.now(), role: 'ai', text: failLine })
+          }
+        }
+
+        // small gap between tokens
+        await new Promise(res => setTimeout(res, 300))
+      }
+    } else {
+      // single or no token: fallback to prior behavior but merge outputs into original AI message
+      const lines = full.split('\n').map(l => l.trim()).filter(Boolean)
+      for (const ln of lines) {
+        await new Promise(res => setTimeout(res, 300))
+        try {
+          applyCommands(ln)
+          const doneLine = `已执行: ${ln.replace(/\[|\]/g, '')}`
+          if (origIdx !== -1) {
+            const prev = aiMessages.value[origIdx].text || ''
+            aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n${doneLine}` })
+          } else {
+            aiMessages.value.push({ id: Date.now(), role: 'ai', text: doneLine })
+          }
+        } catch (e:any) {
+          const failLine = `执行失败: ${ln} -> ${(e && e.message) || e}`
+          if (origIdx !== -1) {
+            const prev = aiMessages.value[origIdx].text || ''
+            aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n${failLine}` })
+          } else {
+            aiMessages.value.push({ id: Date.now(), role: 'ai', text: failLine })
+          }
+        }
+      }
+    }
+  } finally {
+    const idx = executingIds.value.indexOf(msgKey)
+    if (idx !== -1) executingIds.value.splice(idx, 1)
+    // After executing, mark token-level as skipped/applied so UI no longer shows Execute button
+    try { handleSkipToken(msgKey, msgId, undefined, '已执行') } catch (e) { /* ignore */ }
+  }
+}
+
+async function handleApplyToken(token: string, tokenKey: string, msgId?: number, idx?: number) {
+  if (!tokenKey) return
+  if (!executingIds.value.includes(tokenKey)) executingIds.value.push(tokenKey)
+  if (!appliedIds.value.includes(tokenKey)) appliedIds.value.push(tokenKey)
+  const origMsgId = typeof msgId === 'number' ? msgId : Number((tokenKey || '').split('-')[0])
+  const origIdx = aiMessages.value.findIndex(x => x.id === origMsgId)
+  const inner = (token.match(/\[APPLY_FORMULA:([^\]]+)\]/i) || [])[1] || token
+
+  // helper to find sentence
+  function findSentenceForToken(message: string, tokenStr: string) {
+    const parts = message.split(/(?<=。|\.|\n)/g).map(s => s.trim()).filter(Boolean)
+    for (const p of parts) if (p.indexOf(tokenStr) !== -1) return p
+    return message
+  }
+
+  try {
+    const full = aiMessages.value[origIdx] && aiMessages.value[origIdx].text ? String(aiMessages.value[origIdx].text) : ''
+    let word = findSentenceForToken(full, token)
+    word = word.replace(token, '').trim()
+    const wordLine = `word: ${word}`
+    const tokenLine = `token: ${inner}`
+
+    if (origIdx !== -1) {
+      const prev = aiMessages.value[origIdx].text || ''
+      aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n\n${wordLine}\n${tokenLine}` })
+    } else {
+      aiMessages.value.push({ id: Date.now(), role: 'ai', text: `${wordLine}\n${tokenLine}` })
+    }
+
+    await new Promise(res => setTimeout(res, 200))
+
+    // execute the token (expects bracketed token)
+    try {
+      applyCommands(token)
+      try { await saveTableAsExcel() } catch (e) { /* ignore save errors */ }
+      const doneLine = `已执行: ${inner}`
+      if (origIdx !== -1) {
+        const prev2 = aiMessages.value[origIdx].text || ''
+        aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev2}\n${doneLine}` })
+      } else {
+        aiMessages.value.push({ id: Date.now(), role: 'ai', text: doneLine })
+      }
+    } catch (e:any) {
+      const failLine = `执行失败: ${inner} -> ${(e && e.message) || e}`
+      if (origIdx !== -1) {
+        const prev2 = aiMessages.value[origIdx].text || ''
+        aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev2}\n${failLine}` })
+      } else {
+        aiMessages.value.push({ id: Date.now(), role: 'ai', text: failLine })
+      }
+    }
+  } finally {
+    const i = executingIds.value.indexOf(tokenKey)
+    if (i !== -1) executingIds.value.splice(i, 1)
+  }
+}
+
+function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: string) {
+  if (!tokenKey) return
+  if (!appliedIds.value.includes(tokenKey)) appliedIds.value.push(tokenKey)
+  const origMsgId = typeof msgId === 'number' ? msgId : Number((tokenKey || '').split('-')[0])
+  const origIdx = aiMessages.value.findIndex(x => x.id === origMsgId)
+  const text = note || '已跳过'
+  if (origIdx !== -1) {
+    const prev = aiMessages.value[origIdx].text || ''
+    aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n${text}` })
+  } else {
+    aiMessages.value.push({ id: Date.now(), role: 'ai', text })
+  }
+}
 </script>
 
 <style scoped>

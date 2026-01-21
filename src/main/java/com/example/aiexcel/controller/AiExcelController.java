@@ -13,12 +13,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @RestController
 @RequestMapping("/api")
 public class AiExcelController {
 
     private static final Logger logger = LoggerFactory.getLogger(AiExcelController.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Autowired
     private AiExcelIntegrationService aiExcelIntegrationService;
@@ -50,10 +56,37 @@ public class AiExcelController {
 
     @PostMapping("/ai/excel-with-ai")
     public ResponseEntity<Map<String, Object>> processExcelWithAI(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "fileId", required = false) String fileId,
             @RequestParam("command") String command) {
         logger.info("/api/ai/excel-with-ai called, file={}, command={}", file == null ? "<none>" : file.getOriginalFilename(), command);
         try {
+            // If client provided fileId (previously saved on server), load it
+            if ((file == null || file.isEmpty()) && fileId != null && !fileId.trim().isEmpty()) {
+                java.nio.file.Path p = java.nio.file.Paths.get("storage", "uploads", fileId).normalize();
+                if (java.nio.file.Files.exists(p)) {
+                    byte[] data = java.nio.file.Files.readAllBytes(p);
+                    final byte[] bytes = data;
+                    file = new MultipartFile() {
+                        @Override public String getName() { return fileId; }
+                        @Override public String getOriginalFilename() { return fileId; }
+                        @Override public String getContentType() { return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; }
+                        @Override public boolean isEmpty() { return bytes == null || bytes.length == 0; }
+                        @Override public long getSize() { return bytes.length; }
+                        @Override public byte[] getBytes() { return bytes; }
+                        @Override public java.io.InputStream getInputStream() { return new java.io.ByteArrayInputStream(bytes); }
+                        @Override public void transferTo(java.io.File dest) throws java.io.IOException, IllegalStateException {
+                            java.nio.file.Files.write(dest.toPath(), bytes);
+                        }
+                    };
+                } else {
+                    Map<String, Object> response = Map.of(
+                        "success", false,
+                        "error", "fileId not found on server"
+                    );
+                    return ResponseEntity.badRequest().body(response);
+                }
+            }
             Map<String, Object> result = aiExcelIntegrationService.processExcelWithAI(file, command);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
@@ -73,10 +106,34 @@ public class AiExcelController {
 
     @PostMapping(value = "/ai/excel-with-ai-download", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     public ResponseEntity<byte[]> processExcelWithAIAndDownload(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "fileId", required = false) String fileId,
             @RequestParam("command") String command) {
-        logger.info("/api/ai/excel-with-ai-download called, file={}, command={}", file == null ? "<none>" : file.getOriginalFilename(), command);
+        logger.info("/api/ai/excel-with-ai-download called, file={}, fileId={}, command={}", file == null ? "<none>" : file.getOriginalFilename(), fileId, command);
         try {
+            // 如果传入 fileId，从服务器加载
+            if ((file == null || file.isEmpty()) && fileId != null && !fileId.trim().isEmpty()) {
+                java.nio.file.Path p = java.nio.file.Paths.get("storage", "uploads", fileId).normalize();
+                if (java.nio.file.Files.exists(p)) {
+                    byte[] data = java.nio.file.Files.readAllBytes(p);
+                    final byte[] bytes = data;
+                    file = new MultipartFile() {
+                        @Override public String getName() { return fileId; }
+                        @Override public String getOriginalFilename() { return fileId; }
+                        @Override public String getContentType() { return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; }
+                        @Override public boolean isEmpty() { return bytes == null || bytes.length == 0; }
+                        @Override public long getSize() { return bytes.length; }
+                        @Override public byte[] getBytes() { return bytes; }
+                        @Override public java.io.InputStream getInputStream() { return new java.io.ByteArrayInputStream(bytes); }
+                        @Override public void transferTo(java.io.File dest) throws java.io.IOException, IllegalStateException {
+                            java.nio.file.Files.write(dest.toPath(), bytes);
+                        }
+                    };
+                } else {
+                    return ResponseEntity.badRequest().body(null);
+                }
+            }
+
             // 重新实现，直接在内存中处理而不保存到文件
             org.apache.poi.ss.usermodel.Workbook workbook = aiExcelIntegrationService.getExcelWorkbookWithAIChanges(file, command);
 
@@ -208,6 +265,155 @@ public class AiExcelController {
                 "error", "Error processing chart request: " + e.getMessage()
             );
             return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * 保存 Excel 文件到服务器磁盘（供前端在执行 AI 命令后持久化最新文件）
+     */
+    @PostMapping("/excel/save")
+    public ResponseEntity<Map<String, Object>> saveExcelFile(@RequestParam("file") MultipartFile file) {
+        logger.info("/api/excel/save called, file={}", file == null ? "<none>" : file.getOriginalFilename());
+        try {
+            if (file == null || file.isEmpty()) {
+                Map<String, Object> response = Map.of(
+                    "success", false,
+                    "error", "File is empty"
+                );
+                return ResponseEntity.badRequest().body(response);
+            }
+            java.nio.file.Path storageDir = java.nio.file.Paths.get("storage", "uploads");
+            java.nio.file.Files.createDirectories(storageDir);
+            String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : ("upload_" + System.currentTimeMillis() + ".xlsx");
+            String uniqueName = System.currentTimeMillis() + "_" + original;
+            java.nio.file.Path target = storageDir.resolve(java.nio.file.Paths.get(uniqueName)).normalize();
+
+            // Prevent directory traversal
+            if (!target.startsWith(storageDir)) {
+                Map<String, Object> response = Map.of(
+                    "success", false,
+                    "error", "Invalid file path"
+                );
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Ensure parent directory exists (handle cases where target may include subpaths)
+            try {
+                java.nio.file.Path parent = target.getParent();
+                if (parent != null) java.nio.file.Files.createDirectories(parent);
+            } catch (Exception ex) {
+                logger.warn("Failed to create parent directories for {}: {}", target.toString(), ex.getMessage());
+            }
+
+            // java.io.File dest = target.toFile();
+            // Use stream copy instead of transferTo to avoid Tomcat DiskFileItem write issues
+            try (java.io.InputStream in = file.getInputStream()) {
+                java.nio.file.Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // 写入索引文件（storage/uploads/index.json）以便管理
+            try {
+                java.nio.file.Path indexPath = storageDir.resolve("index.json");
+                List<Map<String, Object>> list = new ArrayList<>();
+                if (java.nio.file.Files.exists(indexPath)) {
+                    try {
+                        byte[] idxBytes = java.nio.file.Files.readAllBytes(indexPath);
+                        if (idxBytes != null && idxBytes.length > 0) {
+                            list = MAPPER.readValue(idxBytes, new TypeReference<List<Map<String,Object>>>(){});
+                        }
+                    } catch (Exception ex) {
+                        logger.warn("Failed to read existing index.json: {}", ex.getMessage());
+                        list = new ArrayList<>();
+                    }
+                }
+                Map<String, Object> meta = new HashMap<>();
+                meta.put("fileId", uniqueName);
+                meta.put("originalName", original);
+                meta.put("path", target.toString());
+                meta.put("uploadedAt", System.currentTimeMillis());
+                list.add(meta);
+                try {
+                    byte[] out = MAPPER.writeValueAsBytes(list);
+                    java.nio.file.Files.write(indexPath, out);
+                } catch (Exception ex) {
+                    logger.warn("Failed to write index.json: {}", ex.getMessage());
+                }
+
+                Map<String, Object> response = Map.of(
+                    "success", true,
+                    "message", "File saved",
+                    "fileId", uniqueName
+                );
+                logger.info("Saved uploaded file to {} (fileId={})", target.toString(), uniqueName);
+                return ResponseEntity.ok(response);
+            } catch (Exception ex) {
+                logger.warn("Failed to update index.json: {}", ex.getMessage());
+                Map<String, Object> response = Map.of(
+                    "success", true,
+                    "message", "File saved",
+                    "fileId", uniqueName
+                );
+                return ResponseEntity.ok(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error saving uploaded file: {}", e.getMessage(), e);
+            Map<String, Object> response = Map.of(
+                "success", false,
+                "error", "Error saving file: " + e.getMessage()
+            );
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * 列出已保存的 Excel 文件元信息
+     */
+    @GetMapping("/excel/saved-files")
+    public ResponseEntity<Map<String, Object>> listSavedFiles() {
+        try {
+            java.nio.file.Path storageDir = java.nio.file.Paths.get("storage", "uploads");
+            java.nio.file.Path indexPath = storageDir.resolve("index.json");
+            List<Map<String, Object>> list = new ArrayList<>();
+            if (java.nio.file.Files.exists(indexPath)) {
+                try {
+                    byte[] idxBytes = java.nio.file.Files.readAllBytes(indexPath);
+                    if (idxBytes != null && idxBytes.length > 0) {
+                        list = MAPPER.readValue(idxBytes, new TypeReference<List<Map<String,Object>>>(){});
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Failed to read index.json: {}", ex.getMessage());
+                }
+            }
+            Map<String, Object> response = Map.of(
+                "success", true,
+                "files", list
+            );
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = Map.of(
+                "success", false,
+                "error", "Error listing saved files: " + e.getMessage()
+            );
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * 通过 fileId 直接下载已保存的文件
+     */
+    @GetMapping(value = "/excel/download")
+    public ResponseEntity<byte[]> downloadSavedFile(@RequestParam("fileId") String fileId) {
+        try {
+            java.nio.file.Path p = java.nio.file.Paths.get("storage", "uploads", fileId).normalize();
+            if (!java.nio.file.Files.exists(p)) return ResponseEntity.notFound().build();
+            byte[] data = java.nio.file.Files.readAllBytes(p);
+            String filename = p.getFileName().toString();
+            return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(data);
+        } catch (Exception e) {
+            logger.error("Error downloading saved file {}: {}", fileId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(null);
         }
     }
 

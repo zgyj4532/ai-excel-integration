@@ -81,6 +81,8 @@ Content-Type: application/json
 - **请求参数**:
   - `file`: MultipartFile - Excel文件
   - `command`: String - 自然语言命令
+  - `fileId`: String (optional) - 先前通过 `/api/excel/save` 上传后返回的 `fileId`；当提供 `fileId` 时可不上传 `file`，服务器将使用已保存的文件进行处理。
+  - `fileId`: String (optional) - 先前通过 `/api/excel/save` 上传后返回的 `fileId`；当提供 `fileId` 时可不上传 `file`，服务器将使用已保存的文件进行处理。
 
 #### 请求示例
 
@@ -483,6 +485,67 @@ Content-Type: application/json
   "success": false,
   "error": "File not found or could not be processed"
 }
+```
+
+### 4.1.1 保存Excel到服务器
+
+- **接口**: `POST /api/excel/save`
+- **功能**: 接收前端上传的 Excel 文件并持久化到服务器（供 AI 操作后保存最新文件）
+- **请求格式**: `multipart/form-data`
+- **请求参数**:
+  - `file`: MultipartFile - 要保存的 Excel 文件
+
+#### 请求示例
+
+```bash
+curl -X POST \
+  -F "file=@modified_sample.xlsx" \
+  http://localhost:8080/api/excel/save
+```
+
+#### 响应示例
+
+```json
+{
+  "success": true,
+  "message": "File saved",
+  "fileId": "1600000000000_modified_sample.xlsx"
+}
+```
+
+#### 说明
+
+- 该接口用于前端在执行 AI 命令并生成新的 Excel 内容后将最新版本上传到服务器并持久化。前端可以在用户点击“执行”后静默调用此接口以保持服务器端文件与前端一致。
+
+#### 4.1.2 列出已保存文件
+
+- **接口**: `GET /api/excel/saved-files`
+- **功能**: 返回 `storage/uploads/index.json` 中保存的文件元信息列表（`fileId`、`originalName`、`uploadedAt` 等）。
+
+#### 请求示例
+
+```bash
+curl http://localhost:8080/api/excel/saved-files
+```
+
+#### 响应示例
+
+```json
+{
+  "success": true,
+  "files": [{ "fileId": "1600000000000_modified_sample.xlsx", "originalName":"sample.xlsx", "uploadedAt":1600000000000 }]
+}
+```
+
+#### 4.1.3 按 fileId 下载已保存文件
+
+- **接口**: `GET /api/excel/download?fileId=...`
+- **功能**: 根据 `fileId` 返回二进制文件流，支持作为附件下载。
+
+#### 请求示例
+
+```bash
+curl -O "http://localhost:8080/api/excel/download?fileId=1600000000000_modified_sample.xlsx"
 ```
 
 ### 4.3 数据排序
