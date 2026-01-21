@@ -17,15 +17,60 @@
           <div class="chart-suggestions-grid horizontal">
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_line') }}</h5>
-              <div class="chart-placeholder">{{ $t('chart_line_placeholder') }}</div>
+              <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRange || '未检测' }}</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
+                  <select v-model="selectedColumnLine">
+                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || ('列 ' + (idx+1)) }}</option>
+                  </select>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button @click="onCreateChart('line', selectedColumnLine)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
+                </div>
+                <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
+                  <div v-if="chartInstructionsTextLine">{{ chartInstructionsTextLine }}</div>
+                  <div v-else class="chart-placeholder"></div>
+                </div>
+              </div>
             </div>
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_pie') }}</h5>
-              <div class="chart-placeholder">{{ $t('chart_pie_placeholder') }}</div>
+              <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRange || '未检测' }}</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
+                  <select v-model="selectedColumnPie">
+                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || ('列 ' + (idx+1)) }}</option>
+                  </select>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button @click="onCreateChart('pie', selectedColumnPie)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
+                </div>
+                <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
+                  <div v-if="chartInstructionsTextPie">{{ chartInstructionsTextPie }}</div>
+                  <div v-else class="chart-placeholder"></div>
+                </div>
+              </div>
             </div>
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_top') }}</h5>
-              <div class="chart-placeholder">{{ $t('chart_top_placeholder') || 'Top Products Chart Placeholder' }}</div>
+              <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRange || '未检测' }}</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
+                  <select v-model="selectedColumnBar">
+                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || ('列 ' + (idx+1)) }}</option>
+                  </select>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button @click="onCreateChart('bar', selectedColumnBar)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
+                </div>
+                <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
+                  <div v-if="chartInstructionsTextBar">{{ chartInstructionsTextBar }}</div>
+                  <div v-else class="chart-placeholder"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -76,7 +121,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { getAnalysisCenterData } from '@/services/api'
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
+import * as XLSX from 'xlsx'
+import { createChart } from '@/services/aiService'
 
 const { t } = useI18n()
 
@@ -84,6 +131,100 @@ const reportGenerated = ref(false)
 const reportGenerating = ref(false)
 const reportHeight = ref(160)
 const reportHtml = ref('')
+// Chart creation state (use server-cached file)
+const savedFile = ref<File | null>(null)
+const savedFileId = ref<string | null>(null)
+const sheetHeaders = ref<string[]>([])
+const dataRange = ref('')
+const selectedColumnLine = ref('')
+const selectedColumnPie = ref('')
+const selectedColumnBar = ref('')
+const chartInstructionsTextLine = ref('')
+const chartInstructionsTextPie = ref('')
+const chartInstructionsTextBar = ref('')
+
+function numToCol(n: number) {
+  let s = ''
+  while (n > 0) {
+    const m = (n - 1) % 26
+    s = String.fromCharCode(65 + m) + s
+    n = Math.floor((n - 1) / 26)
+  }
+  return s
+}
+
+// load latest saved file metadata and file bytes from backend
+async function loadLatestSavedFile() {
+  try {
+    const resp = await fetch('/api/excel/saved-files')
+    if (!resp.ok) return
+    const j = await resp.json()
+    if (j && Array.isArray(j.files) && j.files.length > 0) {
+      // pick the last entry as the most recent
+      const last = j.files[j.files.length - 1]
+      if (last && last.fileId) {
+        savedFileId.value = last.fileId
+        // download file bytes
+        const dl = await fetch(`/api/excel/download?fileId=${encodeURIComponent(last.fileId)}`)
+        if (!dl.ok) return
+        const blob = await dl.blob()
+        // try to construct File with originalName if available
+        const filename = last.originalName || last.fileId || 'saved.xlsx'
+        const fileObj = new File([blob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        savedFile.value = fileObj
+        // parse headers and data range
+        try {
+          const arrayBuf = await blob.arrayBuffer()
+          const wb = XLSX.read(arrayBuf, { type: 'array' })
+          const first = wb.SheetNames[0]
+          const sheet = wb.Sheets[first]
+          const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[]
+          if (aoa && aoa.length > 0) {
+            const headers = aoa[0].map((c:any) => c == null ? '' : String(c))
+            sheetHeaders.value = headers
+            selectedColumnLine.value = headers[0] || ''
+            selectedColumnPie.value = headers[0] || ''
+            selectedColumnBar.value = headers[0] || ''
+            const lastRow = aoa.length
+            const lastCol = headers.length || 1
+            dataRange.value = `A1:${numToCol(lastCol)}${lastRow}`
+          }
+        } catch (e) {
+          // ignore parse errors
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// create chart using saved file or savedFileId
+async function onCreateChart(chartType: string, targetColumn: string) {
+  if (!savedFile.value && !savedFileId.value) { alert('未检测到服务器缓存的 Excel 文件'); return }
+  try {
+    // set appropriate status text per chart type
+    if (chartType === 'line') chartInstructionsTextLine.value = '正在创建图表...'
+    if (chartType === 'pie') chartInstructionsTextPie.value = '正在创建图表...'
+    if (chartType === 'bar') chartInstructionsTextBar.value = '正在创建图表...'
+
+    const res = await createChart(savedFile.value || null, chartType, targetColumn, savedFileId.value || undefined)
+
+    const instr = res && (res as any).chartInstructions ? (res as any).chartInstructions : JSON.stringify(res || {})
+    if (chartType === 'line') chartInstructionsTextLine.value = instr
+    if (chartType === 'pie') chartInstructionsTextPie.value = instr
+    if (chartType === 'bar') chartInstructionsTextBar.value = instr
+  } catch (e:any) {
+    const msg = (e && e.message) || '创建图表失败'
+    if (chartType === 'line') chartInstructionsTextLine.value = msg
+    if (chartType === 'pie') chartInstructionsTextPie.value = msg
+    if (chartType === 'bar') chartInstructionsTextBar.value = msg
+  }
+}
+
+onMounted(() => {
+  loadLatestSavedFile()
+})
 
 async function onRecommendClick() {
   try {
@@ -211,9 +352,9 @@ function onFinanceClick() {
   background: rgba(255, 255, 255, 0.02);
   border-radius: 4px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 8px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin-top: 0;
   color: rgba(230, 238, 248, 0.6);
   font-size: 14px;
 }
@@ -241,11 +382,11 @@ function onFinanceClick() {
 .row-first {
   grid-template-columns: 1fr;
 }
-.charts-row { min-height: 360px; }
+.charts-row { min-height: 600px; height: auto; }
 .chart-suggestions-grid.horizontal {
   display: flex;
   gap: 16px;
-  height: calc(360px - 72px); /* leave space for header area */
+  height: auto; /* let content determine height to avoid large bottom gaps */
 }
 .chart-suggestion-item {
   flex: 1 1 0;
@@ -253,9 +394,23 @@ function onFinanceClick() {
   flex-direction: column;
 }
 .chart-suggestion-item .chart-placeholder {
-  flex: 1 1 0;
-  min-height: 200px;
+  /* increase visual area so there is less empty space above/below controls */
+  flex: 0 0 70%;
+  height: 70%;
+  min-height: 260px;
+  margin-top: 0;
 }
+
+/* tighten card/header spacing to remove top gap */
+.card {
+  padding: 8px;
+}
+.card-header { padding: 8px 8px 4px 8px; }
+.card-header h4 { margin: 0; font-size: 16px; }
+.card-header .muted { margin-top: 4px; font-size: 12px; }
+
+/* ensure card internals stack tightly */
+.chart-suggestion-item { padding: 8px; gap: 8px; justify-content: flex-start; }
 
 .row-second { grid-template-columns: 1fr; }
 .auto-report-card { min-height: 160px; }

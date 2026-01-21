@@ -78,12 +78,15 @@ export async function chatSse(message: string) {
   return { text };
 }
 
-export async function createChart(file: File, chartType: string, targetColumn: string) {
+export async function createChart(file?: File | null, chartType?: string, targetColumn?: string, fileId?: string) {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('chartType', chartType);
-  formData.append('targetColumn', targetColumn);
-  return fetchJson('/api/excel/create-chart', { method: 'POST', body: formData });
+  // prefer sending file bytes when available
+  if (file) formData.append('file', file as File)
+  // if no file but fileId provided, send fileId so backend can load cached file
+  if (!file && fileId) formData.append('fileId', fileId)
+  if (chartType) formData.append('chartType', chartType)
+  if (targetColumn) formData.append('targetColumn', targetColumn)
+  return fetchJson('/api/excel/create-chart', { method: 'POST', body: formData })
 }
 
 export async function sortData(file: File, sortColumn: string, sortOrder: string) {

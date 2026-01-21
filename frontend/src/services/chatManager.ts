@@ -19,7 +19,7 @@ apiActions['analyzeData'] = async (file: File | null, analysisRequest: string, f
   return await analyzeExcelData(file as any, analysisRequest)
 }
 apiActions['createChart'] = async (file: File | null, chartType: string, targetColumn: string, fileId?: string | undefined) => {
-  return await createChart(file as any, chartType, targetColumn)
+  return await createChart(file as any, chartType, targetColumn, fileId)
 }
 
 /**
