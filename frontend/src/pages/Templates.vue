@@ -2,7 +2,6 @@
   <div class="templates">
     <div class="topbar">
       <h2>{{ $t('templatesTitle') }}</h2>
-      <div class="muted">{{ $t('templatesSubtitle') }}</div>
     </div>
 
     <div class="content">

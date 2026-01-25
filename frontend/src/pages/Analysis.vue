@@ -2,7 +2,6 @@
   <div class="analysis">
     <div class="topbar">
       <h2>{{ $t('analysisTitle') }}</h2>
-      <div class="muted">{{ $t('analysisSubtitle') }}</div>
     </div>
 
     <div class="content">
@@ -14,11 +13,23 @@
             <p class="muted">{{ $t('chartSuggestionsDesc') }}</p>
           </div>
 
+          <div class="data-range-row">
+            <label style="font-size:12px;color:rgba(230,238,248,0.7)">数据范围</label>
+            <input
+              v-model="dataRangeInput"
+              @input="onDataRangeInput"
+              class="range-input"
+              placeholder="A1:F15"
+            />
+            <span class="range-hint">仅输入起止单元格，例如 A1:F15（首行视为表头，首列为名称列）</span>
+            <span v-if="rangeError" class="range-error">{{ rangeError }}</span>
+          </div>
+
           <div class="chart-suggestions-grid horizontal">
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_line') }}</h5>
               <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRange || '未检测' }}</div>
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRangeInput || '未检测' }}</div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                   <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
                   <select v-model="selectedColumnLine">
@@ -29,7 +40,8 @@
                   <button @click="onCreateChart('line', selectedColumnLine)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
                 </div>
                 <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
-                  <div v-if="chartInstructionsTextLine">{{ chartInstructionsTextLine }}</div>
+                  <canvas ref="lineCanvasRef" class="chart-canvas"></canvas>
+                  <div v-if="chartInstructionsTextLine" class="chart-instructions">{{ chartInstructionsTextLine }}</div>
                   <div v-else class="chart-placeholder"></div>
                 </div>
               </div>
@@ -37,7 +49,7 @@
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_pie') }}</h5>
               <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRange || '未检测' }}</div>
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRangeInput || '未检测' }}</div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                   <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
                   <select v-model="selectedColumnPie">
@@ -48,7 +60,8 @@
                   <button @click="onCreateChart('pie', selectedColumnPie)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
                 </div>
                 <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
-                  <div v-if="chartInstructionsTextPie">{{ chartInstructionsTextPie }}</div>
+                  <canvas ref="pieCanvasRef" class="chart-canvas"></canvas>
+                  <div v-if="chartInstructionsTextPie" class="chart-instructions">{{ chartInstructionsTextPie }}</div>
                   <div v-else class="chart-placeholder"></div>
                 </div>
               </div>
@@ -56,7 +69,7 @@
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_top') }}</h5>
               <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRange || '未检测' }}</div>
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRangeInput || '未检测' }}</div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                   <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
                   <select v-model="selectedColumnBar">
@@ -67,7 +80,8 @@
                   <button @click="onCreateChart('bar', selectedColumnBar)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
                 </div>
                 <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
-                  <div v-if="chartInstructionsTextBar">{{ chartInstructionsTextBar }}</div>
+                  <canvas ref="barCanvasRef" class="chart-canvas"></canvas>
+                  <div v-if="chartInstructionsTextBar" class="chart-instructions">{{ chartInstructionsTextBar }}</div>
                   <div v-else class="chart-placeholder"></div>
                 </div>
               </div>
@@ -87,7 +101,7 @@
             <!-- 报告主体：未生成时高度 160px；生成后根据内容测量高度；当内容高度 > 720px 时启用滚动（鼠标滚轮预览） -->
             <div class="auto-report-body" :style="{ height: (reportGenerated ? reportHeight + 'px' : '160px'), overflowY: reportHeight > 720 ? 'auto' : 'hidden' }">
               <div v-if="!reportGenerated" class="report-placeholder">
-                {{ $t('autoReportPlaceholder') || '未生成报告：点击“生成报告”以查看预览' }}
+                {{'未生成报告：点击“生成报告”以查看预览' }}
               </div>
               <div v-else class="report-content" v-html="reportHtml"></div>
             </div>
@@ -121,9 +135,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { getAnalysisCenterData } from '@/services/api'
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, watch } from 'vue'
 import * as XLSX from 'xlsx'
-import { createChart } from '@/services/aiService'
+import { getExcelDataPreview } from '@/services/aiService'
 
 const { t } = useI18n()
 
@@ -136,12 +150,32 @@ const savedFile = ref<File | null>(null)
 const savedFileId = ref<string | null>(null)
 const sheetHeaders = ref<string[]>([])
 const dataRange = ref('')
+const dataRangeInput = ref('')
+const rangeError = ref('')
 const selectedColumnLine = ref('')
 const selectedColumnPie = ref('')
 const selectedColumnBar = ref('')
 const chartInstructionsTextLine = ref('')
 const chartInstructionsTextPie = ref('')
 const chartInstructionsTextBar = ref('')
+const dataMatrix = ref<any[][]>([])
+const lineCanvasRef = ref<HTMLCanvasElement | null>(null)
+const pieCanvasRef = ref<HTMLCanvasElement | null>(null)
+const barCanvasRef = ref<HTMLCanvasElement | null>(null)
+const canvasHeight = 220
+const lastLoadedFileToken = ref('')
+
+function buildLineChartInstructions(targetColumn: string) {
+  const col = targetColumn || 'Value1'
+  return [
+    `Certainly! Below are the step-by-step instructions to create a line chart in Excel using the "${col}" column as the target data.`,
+    'Step 1: Open your Excel file and go to Sheet1.',
+    `Step 2: Select the data range that includes "Name" (X-axis) and "${col}" (Y-axis). Example: A1:B15.`,
+    'Step 3: Insert a 2-D Line chart via Insert > Charts > Line (first option).',
+    `Step 4: Customize the chart: add a title (e.g., "${col} Over Items"), axis titles ("Items" for X, "${col}" for Y), optional data labels, choose a style, and resize/reposition as needed.`,
+    'Step 5: Save the file. Optional: add a Linear trendline via Chart Design > Add Chart Element > Trendline > Linear.'
+  ].join('\n')
+}
 
 function numToCol(n: number) {
   let s = ''
@@ -151,6 +185,49 @@ function numToCol(n: number) {
     n = Math.floor((n - 1) / 26)
   }
   return s
+}
+
+function colToNum(col: string) {
+  let n = 0
+  const up = col.toUpperCase()
+  for (let i = 0; i < up.length; i++) {
+    const c = up.charCodeAt(i) - 64
+    if (c < 1 || c > 26) return -1
+    n = n * 26 + c
+  }
+  return n
+}
+
+function parseRange(range: string, maxRows: number, maxCols: number) {
+  const trimmed = (range || '').replace(/\s+/g, '').toUpperCase()
+  const m = trimmed.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+  if (!m) return null
+  const sc = colToNum(m[1]) - 1
+  const sr = parseInt(m[2], 10) - 1
+  const ec = colToNum(m[3]) - 1
+  const er = parseInt(m[4], 10) - 1
+  if (sc < 0 || sr < 0 || ec < 0 || er < 0) return null
+  if (sc >= maxCols || sr >= maxRows) return null
+  const ecClamped = Math.min(ec, maxCols - 1)
+  const erClamped = Math.min(er, maxRows - 1)
+  if (sc > ecClamped || sr > erClamped) return null
+  const clamped = ecClamped !== ec || erClamped !== er
+  return { sc, sr, ec: ecClamped, er: erClamped, clamped }
+}
+
+function formatRange(r: { sc: number; sr: number; ec: number; er: number }) {
+  return `${numToCol(r.sc + 1)}${r.sr + 1}:${numToCol(r.ec + 1)}${r.er + 1}`
+}
+
+function onDataRangeInput() {
+  // keep only letters, digits, colon
+  dataRangeInput.value = dataRangeInput.value.replace(/[^A-Za-z0-9:]/g, '').toUpperCase()
+  rangeError.value = ''
+}
+
+function sliceByRange(matrix: any[][], r: { sc: number; sr: number; ec: number; er: number }) {
+  const rows = matrix.slice(r.sr, r.er + 1)
+  return rows.map(row => row.slice(r.sc, r.ec + 1))
 }
 
 // load latest saved file metadata and file bytes from backend
@@ -172,26 +249,7 @@ async function loadLatestSavedFile() {
         const filename = last.originalName || last.fileId || 'saved.xlsx'
         const fileObj = new File([blob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
         savedFile.value = fileObj
-        // parse headers and data range
-        try {
-          const arrayBuf = await blob.arrayBuffer()
-          const wb = XLSX.read(arrayBuf, { type: 'array' })
-          const first = wb.SheetNames[0]
-          const sheet = wb.Sheets[first]
-          const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[]
-          if (aoa && aoa.length > 0) {
-            const headers = aoa[0].map((c:any) => c == null ? '' : String(c))
-            sheetHeaders.value = headers
-            selectedColumnLine.value = headers[0] || ''
-            selectedColumnPie.value = headers[0] || ''
-            selectedColumnBar.value = headers[0] || ''
-            const lastRow = aoa.length
-            const lastCol = headers.length || 1
-            dataRange.value = `A1:${numToCol(lastCol)}${lastRow}`
-          }
-        } catch (e) {
-          // ignore parse errors
-        }
+        await loadMatrixFromApi(fileObj)
       }
     }
   } catch (e) {
@@ -199,31 +257,304 @@ async function loadLatestSavedFile() {
   }
 }
 
-// create chart using saved file or savedFileId
-async function onCreateChart(chartType: string, targetColumn: string) {
-  if (!savedFile.value && !savedFileId.value) { alert('未检测到服务器缓存的 Excel 文件'); return }
+async function loadMatrixFromApi(fileObj: File) {
   try {
-    // set appropriate status text per chart type
-    if (chartType === 'line') chartInstructionsTextLine.value = '正在创建图表...'
-    if (chartType === 'pie') chartInstructionsTextPie.value = '正在创建图表...'
-    if (chartType === 'bar') chartInstructionsTextBar.value = '正在创建图表...'
+    const res = await getExcelDataPreview(fileObj)
+    let matrix = normalizeMatrix(res)
+    // if backend returns corrupted/binary-looking headers, fall back to local parse
+    if (!matrix || looksCorrupted(matrix)) {
+      matrix = await parseLocally(fileObj)
+    }
+    if (matrix) {
+      dataMatrix.value = matrix
+      if (matrix.length > 0 && Array.isArray(matrix[0])) {
+        const headers = (matrix[0] as any[]).map(c => (c == null ? '' : String(c).trim()))
+        sheetHeaders.value = headers
+        const firstValueHeader = headers.slice(1).find(h => h && h.trim().length > 0) || headers[1] || ''
+        selectedColumnLine.value = firstValueHeader
+        selectedColumnPie.value = firstValueHeader
+        selectedColumnBar.value = firstValueHeader
+        const lastRow = matrix.length
+        const lastCol = headers.length || 1
+        dataRange.value = `A1:${numToCol(lastCol)}${lastRow}`
+        dataRangeInput.value = dataRange.value
+      }
+    }
+  } catch (e) {
+    rangeError.value = '无法从后端获取数据，请检查文件'
+  }
+}
 
-    const res = await createChart(savedFile.value || null, chartType, targetColumn, savedFileId.value || undefined)
+function looksCorrupted(matrix: any[][]) {
+  if (!matrix || !matrix.length) return true
+  const headerRow = matrix[0]
+  if (!Array.isArray(headerRow)) return true
+  const joined = headerRow.map(c => (c == null ? '' : String(c))).join(' ')
+  return /PK\w+workbook|_rels\/workbook\.xml\.rels/i.test(joined)
+}
 
-    const instr = res && (res as any).chartInstructions ? (res as any).chartInstructions : JSON.stringify(res || {})
-    if (chartType === 'line') chartInstructionsTextLine.value = instr
-    if (chartType === 'pie') chartInstructionsTextPie.value = instr
-    if (chartType === 'bar') chartInstructionsTextBar.value = instr
-  } catch (e:any) {
-    const msg = (e && e.message) || '创建图表失败'
+async function parseLocally(fileObj: File): Promise<any[][] | null> {
+  try {
+    const buf = await fileObj.arrayBuffer()
+    const wb = XLSX.read(buf, { type: 'array' })
+    const first = wb.SheetNames[0]
+    const sheet = wb.Sheets[first]
+    const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][]
+    if (Array.isArray(aoa) && aoa.length) return aoa
+  } catch (err) {
+    // ignore
+  }
+  return null
+}
+
+function normalizeMatrix(res: any): any[][] | null {
+  // preferred: res.data is array of arrays
+  if (res && Array.isArray(res.data) && res.data.every((r: any) => Array.isArray(r))) return res.data as any[][]
+  // if data is a string, try JSON parse
+  if (res && typeof res.data === 'string') {
+    try {
+      const parsed = JSON.parse(res.data)
+      if (Array.isArray(parsed) && parsed.every((r: any) => Array.isArray(r))) return parsed as any[][]
+    } catch (err) {
+      /* ignore */
+    }
+  }
+  // try excelDataPreview string in TSV/CSV-ish format
+  const preview = res && typeof res.excelDataPreview === 'string' ? res.excelDataPreview : null
+  if (preview) {
+    const lines = preview.split(/\r?\n/).filter((l: string) => l.trim().length > 0)
+    const rows = lines.map((l: string) => l.split(/\t|,/))
+    if (rows.length) return rows
+  }
+  return null
+}
+
+// draw helpers
+function resizeCanvas(canvas: HTMLCanvasElement) {
+  const w = canvas.clientWidth || 360
+  const h = canvas.clientHeight || canvasHeight
+  if (canvas.width !== w) canvas.width = w
+  if (canvas.height !== h) canvas.height = h
+}
+
+function clearCanvas(canvas: HTMLCanvasElement) {
+  resizeCanvas(canvas)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = 'rgba(255,255,255,0.02)'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+}
+
+function drawLine(canvas: HTMLCanvasElement, labels: string[], values: number[]) {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  clearCanvas(canvas)
+  const w = canvas.width - 60
+  const h = canvas.height - 60
+  const ox = 40
+  const oy = canvas.height - 30
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const span = Math.max(max - min, 1)
+  const step = Math.max(1, Math.ceil(span / Math.max(values.length, 1)))
+  const yStart = Math.floor(min)
+
+  // gridlines and y-axis ticks
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  ctx.font = '10px sans-serif'
+  for (let yv = yStart; yv <= max + step; yv += step) {
+    const yPos = oy - ((yv - min) / span) * h
+    ctx.beginPath()
+    ctx.moveTo(ox, yPos)
+    ctx.lineTo(ox + w, yPos)
+    ctx.stroke()
+    ctx.fillText(String(yv), 4, yPos + 3)
+  }
+
+  ctx.strokeStyle = 'rgba(120,179,255,0.8)'
+  ctx.beginPath()
+  values.forEach((v, i) => {
+    const x = ox + (w * i) / Math.max(values.length - 1, 1)
+    const y = oy - ((v - min) / span) * h
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  })
+  ctx.stroke()
+  ctx.fillStyle = 'rgba(120,179,255,0.8)'
+  values.forEach((v, i) => {
+    const x = ox + (w * i) / Math.max(values.length - 1, 1)
+    const y = oy - ((v - min) / span) * h
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill()
+  })
+  // axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+  ctx.beginPath(); ctx.moveTo(ox, oy - h); ctx.lineTo(ox, oy); ctx.lineTo(ox + w, oy); ctx.stroke()
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  ctx.font = '10px sans-serif'
+  labels.forEach((l: string, i: number) => {
+    const x = ox + (w * i) / Math.max(labels.length - 1, 1)
+    ctx.fillText(l, x - 10, oy + 12)
+  })
+}
+
+function drawBar(canvas: HTMLCanvasElement, labels: string[], values: number[]) {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  clearCanvas(canvas)
+  const w = canvas.width - 60
+  const h = canvas.height - 60
+  const ox = 40
+  const oy = canvas.height - 30
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const span = Math.max(max - min, 1)
+  const step = Math.max(1, Math.ceil(span / Math.max(values.length, 1)))
+  const barW = w / Math.max(values.length, 1) * 0.6
+
+  // gridlines and y-axis ticks
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  ctx.font = '10px sans-serif'
+  for (let yv = Math.floor(min); yv <= max + step; yv += step) {
+    const yPos = oy - ((yv - min) / span) * h
+    ctx.beginPath(); ctx.moveTo(ox, yPos); ctx.lineTo(ox + w, yPos); ctx.stroke()
+    ctx.fillText(String(yv), 4, yPos + 3)
+  }
+
+  ctx.fillStyle = 'rgba(125,86,255,0.8)'
+  values.forEach((v, i) => {
+    const x = ox + (w / Math.max(values.length, 1)) * i + (w / Math.max(values.length, 1) - barW) / 2
+    const y = oy - ((v - min) / span) * h
+    ctx.fillRect(x, y, barW, oy - y)
+  })
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+  ctx.beginPath(); ctx.moveTo(ox, oy - h); ctx.lineTo(ox, oy); ctx.lineTo(ox + w, oy); ctx.stroke()
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  ctx.font = '10px sans-serif'
+  labels.forEach((l: string, i: number) => {
+    const x = ox + (w / Math.max(values.length, 1)) * i
+    ctx.fillText(l, x, oy + 12)
+  })
+}
+
+function drawPie(canvas: HTMLCanvasElement, labels: string[], values: number[]) {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  clearCanvas(canvas)
+  const total = values.reduce((a, b) => a + b, 0)
+  if (total <= 0) return
+  let start = -Math.PI / 2
+  const cx = canvas.width / 2
+  const cy = canvas.height / 2
+  const r = Math.min(canvas.width, canvas.height) / 3
+  values.forEach((v, i) => {
+    const pct = v / total
+    const end = start + pct * Math.PI * 2
+    const hue = (i * 60) % 360
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.fillStyle = `hsl(${hue},70%,60%)`
+    ctx.arc(cx, cy, r, start, end)
+    ctx.closePath()
+    ctx.fill()
+    start = end
+  })
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'
+  ctx.font = '10px sans-serif'
+  let acc = -Math.PI / 2
+  values.forEach((v, i) => {
+    const pct = v / total
+    const mid = acc + pct * Math.PI
+    const rx = cx + Math.cos(mid) * (r + 14)
+    const ry = cy + Math.sin(mid) * (r + 14)
+    const label = labels[i] || `项${i+1}`
+    const percent = `${(pct * 100).toFixed(1)}%`
+    ctx.fillText(`${label} ${percent}`, rx - 18, ry)
+    acc += pct * Math.PI * 2
+  })
+}
+
+function extractSeries(matrix: any[][], targetColumn: string, range: { sc: number; sr: number; ec: number; er: number }) {
+  const sliced = sliceByRange(matrix, range)
+  if (sliced.length === 0) return { labels: [], values: [] }
+  const headerRow = sliced[0]
+  const targetIdx = headerRow.findIndex((h: any) => (h == null ? '' : String(h).trim()) === (targetColumn || '').trim())
+  if (targetIdx <= 0) return { labels: [], values: [] }
+  const labels: string[] = []
+  const values: number[] = []
+  for (let i = 1; i < sliced.length; i++) {
+    const row = sliced[i]
+    const name = row[0]
+    const v = Number(row[targetIdx])
+    if (!isFinite(v)) continue
+    labels.push(name == null ? `项${i}` : String(name))
+    values.push(v)
+  }
+  return { labels, values }
+}
+
+async function onCreateChart(chartType: string, targetColumn: string) {
+  if (!savedFile.value) { alert('未检测到服务器缓存的 Excel 文件'); return }
+  rangeError.value = ''
+  if (!targetColumn) {
+    if (chartType === 'line') chartInstructionsTextLine.value = '请选择目标列'
+    if (chartType === 'pie') chartInstructionsTextPie.value = '请选择目标列'
+    if (chartType === 'bar') chartInstructionsTextBar.value = '请选择目标列'
+    return
+  }
+
+  if (!dataMatrix.value.length) {
+    const msg = '未检测到可用数据，请先上传文件并确认范围'
     if (chartType === 'line') chartInstructionsTextLine.value = msg
     if (chartType === 'pie') chartInstructionsTextPie.value = msg
     if (chartType === 'bar') chartInstructionsTextBar.value = msg
+    return
   }
+
+  const parsed = parseRange(dataRangeInput.value || dataRange.value, dataMatrix.value.length, dataMatrix.value[0]?.length || 0)
+  if (!parsed) {
+    rangeError.value = '范围格式无效或超出数据大小'
+    return
+  }
+  if ((parsed as any).clamped) {
+    const safeRange = formatRange(parsed)
+    dataRangeInput.value = safeRange
+    rangeError.value = `输入范围超出数据，已裁剪为 ${safeRange}`
+  }
+
+  const { labels, values } = extractSeries(dataMatrix.value, targetColumn, parsed)
+  if (!labels.length || !values.length) {
+    const msg = '未找到有效数据，请确认首列为名称列，目标列为数值列'
+    if (chartType === 'line') chartInstructionsTextLine.value = msg
+    if (chartType === 'pie') chartInstructionsTextPie.value = msg
+    if (chartType === 'bar') chartInstructionsTextBar.value = msg
+    return
+  }
+
+  if (chartType === 'line' && lineCanvasRef.value) drawLine(lineCanvasRef.value, labels, values)
+  if (chartType === 'pie' && pieCanvasRef.value) drawPie(pieCanvasRef.value, labels, values)
+  if (chartType === 'bar' && barCanvasRef.value) drawBar(barCanvasRef.value, labels, values)
+
+  const successMsg = chartType === 'line'
+    ? `已基于列 "${targetColumn}" 生成${chartType === 'line'}折线图（首行表头，首列名称，已过滤非数值行）`
+    : `已基于列 "${targetColumn}" 生成${chartType === 'pie' ? '扇形图' : '柱状图'}（首行表头，首列名称，已过滤非数值行）`
+  if (chartType === 'line') chartInstructionsTextLine.value = successMsg
+  if (chartType === 'pie') chartInstructionsTextPie.value = successMsg
+  if (chartType === 'bar') chartInstructionsTextBar.value = successMsg
 }
 
 onMounted(() => {
   loadLatestSavedFile()
+})
+
+watch(savedFile, async (f) => {
+  if (!f) return
+  const token = `${f.name}:${f.size}`
+  if (token === lastLoadedFileToken.value) return
+  lastLoadedFileToken.value = token
+  await loadMatrixFromApi(f)
 })
 
 async function onRecommendClick() {
@@ -357,6 +688,46 @@ function onFinanceClick() {
   margin-top: 0;
   color: rgba(230, 238, 248, 0.6);
   font-size: 14px;
+}
+
+.chart-instructions {
+  white-space: pre-line;
+  line-height: 1.4;
+}
+
+.data-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0 0;
+}
+
+.range-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  width: 140px;
+}
+
+.range-hint {
+  font-size: 12px;
+  color: rgba(230, 238, 248, 0.6);
+}
+
+.range-error {
+  font-size: 12px;
+  color: #ffb4b4;
+}
+
+.chart-canvas {
+  width: 100%;
+  height: 220px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  margin-bottom: 6px;
 }
 
 .recommend-btn,
