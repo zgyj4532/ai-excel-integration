@@ -23,20 +23,20 @@
       <div class="row row-second">
         <div class="card">
           <h4>{{ $t('template_common_sales') }}</h4>
-          <p>这是一个销售汇总模板，包含常用的销售统计和分析功能。</p>
-          <button @click="applySalesTemplate" class="apply-btn">应用此模板</button>
+          <p>{{ $t('template_common_sales_desc') }}</p>
+          <button @click="applySalesTemplate" class="apply-btn">{{ $t('applyThisTemplate') }}</button>
         </div>
 
         <div class="card">
           <h4>{{ $t('template_pivot_dept_month') }}</h4>
-          <p>按部门和月份的透视表模板，便于进行多维度数据分析。</p>
-          <button @click="applyPivotTemplate" class="apply-btn">应用此模板</button>
+          <p>{{ $t('template_pivot_dept_month_desc') }}</p>
+          <button @click="applyPivotTemplate" class="apply-btn">{{ $t('applyThisTemplate') }}</button>
         </div>
 
         <div class="card">
           <h4>{{ $t('template_cleaning') }}</h4>
-          <p>数据清洗模板，包含去重、日期标准化等常用清洗步骤。</p>
-          <button @click="applyCleaningTemplate" class="apply-btn">应用此模板</button>
+          <p>{{ $t('template_cleaning_desc') }}</p>
+          <button @click="applyCleaningTemplate" class="apply-btn">{{ $t('applyThisTemplate') }}</button>
         </div>
       </div>
     </div>
@@ -65,11 +65,11 @@ async function applySalesTemplate() {
   try {
     const result = await applyTemplate(1, {})
     if (result.success) {
-      alert(`销售汇总模板应用成功: ${result.message}`)
+      alert(t('templateApplySuccess', { name: t('template_common_sales'), msg: result.message || '' }))
     }
   } catch (error) {
     console.error('应用模板失败:', error)
-    alert('应用模板失败')
+    alert(t('applyTemplateFailed'))
   }
 }
 
@@ -77,11 +77,11 @@ async function applyPivotTemplate() {
   try {
     const result = await applyTemplate(2, {})
     if (result.success) {
-      alert(`透视表模板应用成功: ${result.message}`)
+      alert(t('templateApplySuccess', { name: t('template_pivot_dept_month'), msg: result.message || '' }))
     }
   } catch (error) {
     console.error('应用模板失败:', error)
-    alert('应用模板失败')
+    alert(t('applyTemplateFailed'))
   }
 }
 
@@ -89,11 +89,11 @@ async function applyCleaningTemplate() {
   try {
     const result = await applyTemplate(3, {})
     if (result.success) {
-      alert(`数据清洗模板应用成功: ${result.message}`)
+      alert(t('templateApplySuccess', { name: t('template_cleaning'), msg: result.message || '' }))
     }
   } catch (error) {
     console.error('应用模板失败:', error)
-    alert('应用模板失败')
+    alert(t('applyTemplateFailed'))
   }
 }
 </script>

@@ -14,14 +14,14 @@
           </div>
 
           <div class="data-range-row">
-            <label style="font-size:12px;color:rgba(230,238,248,0.7)">数据范围</label>
+            <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('dataRangeLabel') }}</label>
             <input
               v-model="dataRangeInput"
               @input="onDataRangeInput"
               class="range-input"
-              placeholder="A1:F15"
+              :placeholder="$t('dataRangePlaceholder')"
             />
-            <span class="range-hint">仅输入起止单元格，例如 A1:F15（首行视为表头，首列为名称列）</span>
+            <span class="range-hint">{{ $t('rangeHint') }}</span>
             <span v-if="rangeError" class="range-error">{{ rangeError }}</span>
           </div>
 
@@ -29,60 +29,57 @@
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_line') }}</h5>
               <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRangeInput || '未检测' }}</div>
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">{{ $t('dataRangeLabel') }}：{{ dataRangeInput || $t('rangeNotDetected') }}</div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
+                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('targetColumnLabel') }}</label>
                   <select v-model="selectedColumnLine">
-                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || ('列 ' + (idx+1)) }}</option>
+                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || $t('col_default', { n: idx + 1 }) }}</option>
                   </select>
                 </div>
                 <div style="display:flex;gap:8px;">
-                  <button @click="onCreateChart('line', selectedColumnLine)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
+                  <button @click="onCreateChart('line', selectedColumnLine)" class="generate-report-btn" :disabled="!savedFile">{{ $t('createChartBtn') }}</button>
                 </div>
                 <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
                   <canvas ref="lineCanvasRef" class="chart-canvas"></canvas>
                   <div v-if="chartInstructionsTextLine" class="chart-instructions">{{ chartInstructionsTextLine }}</div>
-                  <div v-else class="chart-placeholder"></div>
                 </div>
               </div>
             </div>
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_pie') }}</h5>
               <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRangeInput || '未检测' }}</div>
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">{{ $t('dataRangeLabel') }}：{{ dataRangeInput || $t('rangeNotDetected') }}</div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
+                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('targetColumnLabel') }}</label>
                   <select v-model="selectedColumnPie">
-                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || ('列 ' + (idx+1)) }}</option>
+                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || $t('col_default', { n: idx + 1 }) }}</option>
                   </select>
                 </div>
                 <div style="display:flex;gap:8px;">
-                  <button @click="onCreateChart('pie', selectedColumnPie)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
+                  <button @click="onCreateChart('pie', selectedColumnPie)" class="generate-report-btn" :disabled="!savedFile">{{ $t('createChartBtn') }}</button>
                 </div>
                 <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
                   <canvas ref="pieCanvasRef" class="chart-canvas"></canvas>
                   <div v-if="chartInstructionsTextPie" class="chart-instructions">{{ chartInstructionsTextPie }}</div>
-                  <div v-else class="chart-placeholder"></div>
                 </div>
               </div>
             </div>
             <div class="chart-suggestion-item">
               <h5>{{ $t('chart_top') }}</h5>
               <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">数据范围：{{ dataRangeInput || '未检测' }}</div>
+                <div style="font-size:12px;color:rgba(200,210,220,0.7)">{{ $t('dataRangeLabel') }}：{{ dataRangeInput || $t('rangeNotDetected') }}</div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">目标列</label>
+                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('targetColumnLabel') }}</label>
                   <select v-model="selectedColumnBar">
-                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || ('列 ' + (idx+1)) }}</option>
+                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || $t('col_default', { n: idx + 1 }) }}</option>
                   </select>
                 </div>
                 <div style="display:flex;gap:8px;">
-                  <button @click="onCreateChart('bar', selectedColumnBar)" class="generate-report-btn" :disabled="!savedFile">创建图表</button>
+                  <button @click="onCreateChart('bar', selectedColumnBar)" class="generate-report-btn" :disabled="!savedFile">{{ $t('createChartBtn') }}</button>
                 </div>
                 <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
                   <canvas ref="barCanvasRef" class="chart-canvas"></canvas>
                   <div v-if="chartInstructionsTextBar" class="chart-instructions">{{ chartInstructionsTextBar }}</div>
-                  <div v-else class="chart-placeholder"></div>
                 </div>
               </div>
             </div>
@@ -95,15 +92,35 @@
           <div class="card auto-report-card" :class="{ generated: reportGenerated }">
             <h4>{{ $t('autoReportTitle') }}</h4>
             <p class="muted">{{ $t('autoReportDesc') }}</p>
-            <button @click="onGenerateReportClick" class="generate-report-btn">{{ $t('generateReportBtn') }}</button>
-            <button @click="onLoadApiExample" class="generate-report-btn" style="margin-left:8px">{{ $t('loadApiExample') || '加载接口示例' }}</button>
+            <div class="report-actions">
+              <div class="report-buttons">
+                <button @click="onGenerateReportClick" class="generate-report-btn">{{ $t('generateReportBtn') }}</button>
+                <button @click="onLoadApiExample" class="generate-report-btn" style="margin-left:8px">{{ $t('loadApiExample') }}</button>
+              </div>
+              <div class="report-options">
+                <span class="options-label">{{ $t('optionalAnalyses') }}</span>
+                <label><input type="checkbox" v-model="includeFinancialRatios" />{{ $t('includeFinancialRatios') }}</label>
+                <label><input type="checkbox" v-model="includeProfitability" />{{ $t('includeProfitability') }}</label>
+                <label><input type="checkbox" v-model="includeCashFlow" />{{ $t('includeCashFlow') }}</label>
+                <label><input type="checkbox" v-model="includeBudgetActual" />{{ $t('includeBudgetActual') }}</label>
+              </div>
+            </div>
 
             <!-- 报告主体：未生成时高度 160px；生成后根据内容测量高度；当内容高度 > 720px 时启用滚动（鼠标滚轮预览） -->
-            <div class="auto-report-body" :style="{ height: (reportGenerated ? reportHeight + 'px' : '160px'), overflowY: reportHeight > 720 ? 'auto' : 'hidden' }">
+            <div
+              class="auto-report-body"
+              :style="{
+                height: reportGenerated ? 'auto' : '160px',
+                maxHeight: reportGenerated ? '720px' : '160px',
+                overflowY: reportGenerated ? 'auto' : 'hidden'
+              }"
+            >
               <div v-if="!reportGenerated" class="report-placeholder">
-                {{'未生成报告：点击“生成报告”以查看预览' }}
+                {{ $t('reportPlaceholder') }}
               </div>
-              <div v-else class="report-content" v-html="reportHtml"></div>
+              <div v-else class="report-content">
+                <XMarkdown :markdown="reportMarkdown" :highlight="true" />
+              </div>
             </div>
           </div>
         </div>
@@ -136,15 +153,25 @@
 import { useI18n } from 'vue-i18n'
 import { getAnalysisCenterData } from '@/services/api'
 import { ref, nextTick, onMounted, watch } from 'vue'
+import { XMarkdown } from 'vue-element-plus-x'
 import * as XLSX from 'xlsx'
-import { getExcelDataPreview } from '@/services/aiService'
+import {
+  analyzeBudgetActual,
+  analyzeCashFlow,
+  analyzeClv,
+  analyzeFinancial,
+  analyzeFinancialRatios,
+  analyzeProfitability,
+  analyzeRfm,
+  getExcelDataPreview
+} from '@/services/aiService'
 
 const { t } = useI18n()
 
 const reportGenerated = ref(false)
 const reportGenerating = ref(false)
 const reportHeight = ref(160)
-const reportHtml = ref('')
+const reportMarkdown = ref('')
 // Chart creation state (use server-cached file)
 const savedFile = ref<File | null>(null)
 const savedFileId = ref<string | null>(null)
@@ -164,18 +191,10 @@ const pieCanvasRef = ref<HTMLCanvasElement | null>(null)
 const barCanvasRef = ref<HTMLCanvasElement | null>(null)
 const canvasHeight = 220
 const lastLoadedFileToken = ref('')
-
-function buildLineChartInstructions(targetColumn: string) {
-  const col = targetColumn || 'Value1'
-  return [
-    `Certainly! Below are the step-by-step instructions to create a line chart in Excel using the "${col}" column as the target data.`,
-    'Step 1: Open your Excel file and go to Sheet1.',
-    `Step 2: Select the data range that includes "Name" (X-axis) and "${col}" (Y-axis). Example: A1:B15.`,
-    'Step 3: Insert a 2-D Line chart via Insert > Charts > Line (first option).',
-    `Step 4: Customize the chart: add a title (e.g., "${col} Over Items"), axis titles ("Items" for X, "${col}" for Y), optional data labels, choose a style, and resize/reposition as needed.`,
-    'Step 5: Save the file. Optional: add a Linear trendline via Chart Design > Add Chart Element > Trendline > Linear.'
-  ].join('\n')
-}
+const includeFinancialRatios = ref(false)
+const includeProfitability = ref(false)
+const includeCashFlow = ref(false)
+const includeBudgetActual = ref(false)
 
 function numToCol(n: number) {
   let s = ''
@@ -281,7 +300,7 @@ async function loadMatrixFromApi(fileObj: File) {
       }
     }
   } catch (e) {
-    rangeError.value = '无法从后端获取数据，请检查文件'
+    rangeError.value = t('fetchDataFailed')
   }
 }
 
@@ -291,6 +310,13 @@ function looksCorrupted(matrix: any[][]) {
   if (!Array.isArray(headerRow)) return true
   const joined = headerRow.map(c => (c == null ? '' : String(c))).join(' ')
   return /PK\w+workbook|_rels\/workbook\.xml\.rels/i.test(joined)
+}
+
+function headerLooksMojibake(row: any[]) {
+  const joined = (row || []).map(c => (c == null ? '' : String(c))).join(' ')
+  if (!joined) return true
+  if (joined.includes('\ufffd') || joined.includes('�')) return true
+  return /锟|Ã|Â|ä¸|å|æ|ç|é¡|äº|å½/.test(joined)
 }
 
 async function parseLocally(fileObj: File): Promise<any[][] | null> {
@@ -308,7 +334,6 @@ async function parseLocally(fileObj: File): Promise<any[][] | null> {
 }
 
 function normalizeMatrix(res: any): any[][] | null {
-  // preferred: res.data is array of arrays
   if (res && Array.isArray(res.data) && res.data.every((r: any) => Array.isArray(r))) return res.data as any[][]
   // if data is a string, try JSON parse
   if (res && typeof res.data === 'string') {
@@ -327,6 +352,18 @@ function normalizeMatrix(res: any): any[][] | null {
     if (rows.length) return rows
   }
   return null
+}
+
+function renderSectionMd(title: string, body?: string, preview?: string) {
+  const safeBody = (body && body.trim()) ? body.trim() : t('reportNoContent')
+  const previewBlock = preview ? `\n\n**${t('reportPreviewTitle')}**\n\n\u0060\u0060\u0060\n${preview}\n\u0060\u0060\u0060` : ''
+  return `### ${title}\n\n${safeBody}${previewBlock}`
+}
+
+function renderErrorMd(title: string, err: unknown) {
+  const msg = (err as any)?.message || String(err) || t('reportUnknownError')
+  const body = t('reportApiError', { name: title, msg })
+  return `### ${title}\n\n${body}\n\n> ${msg}`
 }
 
 // draw helpers
@@ -469,7 +506,7 @@ function drawPie(canvas: HTMLCanvasElement, labels: string[], values: number[]) 
     const mid = acc + pct * Math.PI
     const rx = cx + Math.cos(mid) * (r + 14)
     const ry = cy + Math.sin(mid) * (r + 14)
-    const label = labels[i] || `项${i+1}`
+    const label = labels[i] || t('itemLabel', { n: i + 1 })
     const percent = `${(pct * 100).toFixed(1)}%`
     ctx.fillText(`${label} ${percent}`, rx - 18, ry)
     acc += pct * Math.PI * 2
@@ -489,24 +526,24 @@ function extractSeries(matrix: any[][], targetColumn: string, range: { sc: numbe
     const name = row[0]
     const v = Number(row[targetIdx])
     if (!isFinite(v)) continue
-    labels.push(name == null ? `项${i}` : String(name))
+    labels.push(name == null ? t('itemLabel', { n: i }) : String(name))
     values.push(v)
   }
   return { labels, values }
 }
 
 async function onCreateChart(chartType: string, targetColumn: string) {
-  if (!savedFile.value) { alert('未检测到服务器缓存的 Excel 文件'); return }
+  if (!savedFile.value) { alert(t('cachedFileMissing')); return }
   rangeError.value = ''
   if (!targetColumn) {
-    if (chartType === 'line') chartInstructionsTextLine.value = '请选择目标列'
-    if (chartType === 'pie') chartInstructionsTextPie.value = '请选择目标列'
-    if (chartType === 'bar') chartInstructionsTextBar.value = '请选择目标列'
+    if (chartType === 'line') chartInstructionsTextLine.value = t('selectTargetColumn')
+    if (chartType === 'pie') chartInstructionsTextPie.value = t('selectTargetColumn')
+    if (chartType === 'bar') chartInstructionsTextBar.value = t('selectTargetColumn')
     return
   }
 
   if (!dataMatrix.value.length) {
-    const msg = '未检测到可用数据，请先上传文件并确认范围'
+    const msg = t('noDataAvailable')
     if (chartType === 'line') chartInstructionsTextLine.value = msg
     if (chartType === 'pie') chartInstructionsTextPie.value = msg
     if (chartType === 'bar') chartInstructionsTextBar.value = msg
@@ -515,18 +552,18 @@ async function onCreateChart(chartType: string, targetColumn: string) {
 
   const parsed = parseRange(dataRangeInput.value || dataRange.value, dataMatrix.value.length, dataMatrix.value[0]?.length || 0)
   if (!parsed) {
-    rangeError.value = '范围格式无效或超出数据大小'
+    rangeError.value = t('invalidRange')
     return
   }
   if ((parsed as any).clamped) {
     const safeRange = formatRange(parsed)
     dataRangeInput.value = safeRange
-    rangeError.value = `输入范围超出数据，已裁剪为 ${safeRange}`
+    rangeError.value = t('rangeClamped', { range: safeRange })
   }
 
   const { labels, values } = extractSeries(dataMatrix.value, targetColumn, parsed)
   if (!labels.length || !values.length) {
-    const msg = '未找到有效数据，请确认首列为名称列，目标列为数值列'
+    const msg = t('noValidData')
     if (chartType === 'line') chartInstructionsTextLine.value = msg
     if (chartType === 'pie') chartInstructionsTextPie.value = msg
     if (chartType === 'bar') chartInstructionsTextBar.value = msg
@@ -538,8 +575,10 @@ async function onCreateChart(chartType: string, targetColumn: string) {
   if (chartType === 'bar' && barCanvasRef.value) drawBar(barCanvasRef.value, labels, values)
 
   const successMsg = chartType === 'line'
-    ? `已基于列 "${targetColumn}" 生成${chartType === 'line'}折线图（首行表头，首列名称，已过滤非数值行）`
-    : `已基于列 "${targetColumn}" 生成${chartType === 'pie' ? '扇形图' : '柱状图'}（首行表头，首列名称，已过滤非数值行）`
+    ? t('chartGeneratedLine', { column: targetColumn })
+    : chartType === 'pie'
+      ? t('chartGeneratedPie', { column: targetColumn })
+      : t('chartGeneratedBar', { column: targetColumn })
   if (chartType === 'line') chartInstructionsTextLine.value = successMsg
   if (chartType === 'pie') chartInstructionsTextPie.value = successMsg
   if (chartType === 'bar') chartInstructionsTextBar.value = successMsg
@@ -565,58 +604,104 @@ async function onRecommendClick() {
     }
   } catch (error) {
     console.error('获取推荐失败:', error)
-    alert('获取推荐失败')
+    alert(t('recommendFailed'))
   }
 }
 
 async function onGenerateReportClick() {
-  // 标记为生成中，延迟 2 秒以显示“生成中”状态
-  reportGenerating.value = true
-  await new Promise(resolve => setTimeout(resolve, 2000))
-
-  // 尝试从 API 获取报告内容；若失败则使用示例占位内容
-  try {
-    const result = await getAnalysisCenterData()
-    // 兼容两种返回结构：{ content: string } 或 { data: { ... } }
-    if (result && (result as any).content) {
-      reportHtml.value = (result as any).content
-    } else if (result && (result as any).data) {
-      const d = (result as any).data
-      const topProducts = Array.isArray(d.topProducts) ? d.topProducts.map((p: any) => `<li>${p}</li>`).join('') : ''
-      const cust = d.customerDistribution || {}
-      reportHtml.value = `
-        <h3>销售趋势</h3>
-        <p>${d.salesTrend || ''}</p>
-        <h3>畅销产品</h3>
-        <ul>${topProducts}</ul>
-        <h3>客户分布</h3>
-        <p>新客户: ${cust['新客户'] || 0}, 老客户: ${cust['老客户'] || 0}</p>
-        <h3>营收增长</h3>
-        <p>${d.revenueGrowth || ''}</p>
-      `
-    } else {
-      reportHtml.value = '<p>' + t('generateReportAlert') + '</p>'
-    }
-  } catch (e) {
-    // 生成较长的示例内容以演示滚动
-    reportHtml.value = Array.from({ length: 40 }).map((_, i) => `<p>示例报告段落 ${i+1}：这是一段示例文本，用于测试自动报告的显示与滚动。</p>`).join('')
+  if (!savedFile.value) {
+    alert(t('reportNeedsFile'))
+    return
   }
 
+  reportGenerating.value = true
   reportGenerated.value = true
-  reportGenerating.value = false
-  // 等待 DOM 更新然后测量实际高度
-  await nextTick()
-  const el = document.querySelector('.auto-report-card .report-content') as HTMLElement | null
-  if (el) {
-    // 使用 scrollHeight 作为内容高度
-    reportHeight.value = el.scrollHeight
-  } else {
-    reportHeight.value = 800
+  reportMarkdown.value = '生成中...'
+  const file = savedFile.value
+  const sections: string[] = []
+  const hasOptional = includeFinancialRatios.value || includeProfitability.value || includeCashFlow.value || includeBudgetActual.value
+
+  try {
+    // 基础：财务报表分析（必调）
+    try {
+      const res = await analyzeFinancial(file)
+      sections.push(renderSectionMd(t('reportSectionFinancial'), (res as any)?.financialAnalysis || (res as any)?.analysis, (res as any)?.excelDataPreview))
+    } catch (err) {
+      sections.push(renderErrorMd(t('reportSectionFinancial'), err))
+    }
+
+    // 选填：财务比率、盈利能力、现金流、预算对比
+    if (hasOptional) {
+      if (includeFinancialRatios.value) {
+        try {
+          const res = await analyzeFinancialRatios(file)
+          sections.push(renderSectionMd(t('reportSectionFinancialRatios'), (res as any)?.financialRatios, (res as any)?.excelDataPreview))
+        } catch (err) {
+          sections.push(renderErrorMd(t('reportSectionFinancialRatios'), err))
+        }
+      }
+
+      if (includeProfitability.value) {
+        try {
+          const res = await analyzeProfitability(file)
+          sections.push(renderSectionMd(t('reportSectionProfitability'), (res as any)?.profitabilityAnalysis, (res as any)?.excelDataPreview))
+        } catch (err) {
+          sections.push(renderErrorMd(t('reportSectionProfitability'), err))
+        }
+      }
+
+      if (includeCashFlow.value) {
+        try {
+          const res = await analyzeCashFlow(file)
+          sections.push(renderSectionMd(t('reportSectionCashFlow'), (res as any)?.cashFlowAnalysis, (res as any)?.excelDataPreview))
+        } catch (err) {
+          sections.push(renderErrorMd(t('reportSectionCashFlow'), err))
+        }
+      }
+
+      if (includeBudgetActual.value) {
+        try {
+          const res = await analyzeBudgetActual(file)
+          sections.push(renderSectionMd(t('reportSectionBudgetActual'), (res as any)?.budgetActualAnalysis, (res as any)?.excelDataPreview))
+        } catch (err) {
+          sections.push(renderErrorMd(t('reportSectionBudgetActual'), err))
+        }
+      }
+
+      // 客户分析接口：RFM / CLV 接入到自动报告
+      try {
+        const res = await analyzeRfm(file)
+        sections.push(renderSectionMd(t('reportSectionRfm'), (res as any)?.rfmAnalysis, (res as any)?.excelDataPreview))
+      } catch (err) {
+        sections.push(renderErrorMd(t('reportSectionRfm'), err))
+      }
+
+      try {
+        const res = await analyzeClv(file)
+        sections.push(renderSectionMd(t('reportSectionClv'), (res as any)?.clvAnalysis, (res as any)?.excelDataPreview))
+      } catch (err) {
+        sections.push(renderErrorMd(t('reportSectionClv'), err))
+      }
+    }
+
+    reportMarkdown.value = sections.join('\n\n') || t('reportNoContent')
+    reportGenerated.value = true
+
+    // 等待 DOM 更新然后测量实际高度
+    await nextTick()
+    const el = document.querySelector('.auto-report-card .report-content') as HTMLElement | null
+    if (el) {
+      reportHeight.value = el.scrollHeight
+    } else {
+      reportHeight.value = 800
+    }
+  } finally {
+    reportGenerating.value = false
   }
 }
 
 function onRfmClick() {
-  alert(t('rfmBtn') + ' clicked')
+  alert(t('rfmClicked'))
 }
 
 // 从内置 API 文档示例加载一个响应示例到报告预览
@@ -629,7 +714,7 @@ function onLoadApiExample() {
     commandResults: []
   }
 
-  reportHtml.value = `<pre><code>${JSON.stringify(example, null, 2)}</code></pre>`
+  reportMarkdown.value = '```json\n' + JSON.stringify(example, null, 2) + '\n```'
   reportGenerated.value = true
   // 等待 DOM 更新然后测量高度
   nextTick().then(() => {
@@ -640,11 +725,11 @@ function onLoadApiExample() {
 }
 
 function onClvClick() {
-  alert(t('clvBtn') + ' clicked')
+  alert(t('clvClicked'))
 }
 
 function onFinanceClick() {
-  alert(t('financeBtn') + ' clicked')
+  alert(t('financeClicked'))
 }
 </script>
 
@@ -761,6 +846,7 @@ function onFinanceClick() {
 }
 .chart-suggestion-item {
   flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -786,9 +872,100 @@ function onFinanceClick() {
 .row-second { grid-template-columns: 1fr; }
 .auto-report-card { min-height: 160px; }
 .auto-report-card .auto-report-body { transition: height 200ms ease; }
-.auto-report-card .report-placeholder { display:flex; align-items:center; justify-content:center; height:100%; color: rgba(230,238,248,0.6); }
+.auto-report-card .report-placeholder { display:flex; align-items:center; justify-content:center; height:100%; color: rgba(230,238,248,0.9); }
 .auto-report-card .report-content { padding:12px; color: rgba(230,238,248,0.9); }
+.auto-report-card .report-content :deep(.markdown-body) {
+  color: rgba(230,238,248,0.9);
+  background: transparent;
+}
+.auto-report-card .report-content :deep(.markdown-body p),
+.auto-report-card .report-content :deep(.markdown-body li),
+.auto-report-card .report-content :deep(.markdown-body span),
+.auto-report-card .report-content :deep(.markdown-body strong),
+.auto-report-card .report-content :deep(.markdown-body em) {
+  color: rgba(230,238,248,0.9);
+}
+.auto-report-card .report-content :deep(.markdown-body h1),
+.auto-report-card .report-content :deep(.markdown-body h2),
+.auto-report-card .report-content :deep(.markdown-body h3),
+.auto-report-card .report-content :deep(.markdown-body h4),
+.auto-report-card .report-content :deep(.markdown-body h5),
+.auto-report-card .report-content :deep(.markdown-body h6) {
+  color: rgba(230,238,248,0.95);
+}
+.auto-report-card .report-content :deep(.markdown-body a) {
+  color: #9ad4ff;
+}
+.auto-report-card .report-content :deep(.elx-xmarkdown-container),
+.auto-report-card .report-content :deep(.elx-xmarkdown-provider),
+.auto-report-card .report-content :deep(.elx-xmarkdown-container *),
+.auto-report-card .report-content :deep(.elx-xmarkdown-provider *) {
+  color: rgba(230,238,248,0.9);
+}
+.auto-report-card .report-content :deep(pre),
+.auto-report-card .report-content :deep(code),
+.auto-report-card .report-content :deep(.elx-highlight-code-wrapper),
+.auto-report-card .report-content :deep(.elx-highlight-code-wrapper *),
+.auto-report-card .report-content :deep(.shiki),
+.auto-report-card .report-content :deep(.shiki *) {
+  color: rgba(230,238,248,0.9);
+  background-color: rgba(255,255,255,0.02) !important;
+}
+.auto-report-card .report-content :deep(.pre-md),
+.auto-report-card .report-content :deep(.markdown-elxLanguage-header-div),
+.auto-report-card .report-content :deep(.markdown-elxLanguage-header-span),
+.auto-report-card .report-content :deep(.markdown-elxLanguage-header-space),
+.auto-report-card .report-content :deep(.el-button.shiki-header-button),
+.auto-report-card .report-content :deep(.el-button.shiki-header-button-expand),
+.auto-report-card .report-content :deep(.el-button.shiki-header-button-text),
+.auto-report-card .report-content :deep(.el-scrollbar__wrap),
+.auto-report-card .report-content :deep(.el-scrollbar__view),
+.auto-report-card .report-content :deep(.code-lines) {
+  background: rgba(255,255,255,0.02) !important;
+  color: rgba(230,238,248,0.9) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+.auto-report-card .report-content :deep(.code-lines .line-content),
+.auto-report-card .report-content :deep(.code-lines .line),
+.auto-report-card .report-content :deep(.code-lines .line span) {
+  color: rgba(230,238,248,0.9) !important;
+}
+.auto-report-card .report-content :deep(.el-scrollbar__bar) {
+  background: transparent !important;
+}
+.auto-report-card .report-content :deep(.el-scrollbar__thumb) {
+  background: rgba(255,255,255,0.25) !important;
+  border-radius: 999px !important;
+}
+.auto-report-card .report-content :deep(.markdown-elxLanguage-header-div) {
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.auto-report-card .report-content :deep(.shiki-header-button),
+.auto-report-card .report-content :deep(.markdown-elxLanguage-header-toggle),
+.auto-report-card .report-content :deep(.markdown-elxLanguage-header-button) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.auto-report-card .report-content :deep(.shiki .line),
+.auto-report-card .report-content :deep(.shiki .line span),
+.auto-report-card .report-content :deep(.shiki .line-content) {
+  color: rgba(230,238,248,0.9) !important;
+}
 .auto-report-card.generated { /* extra visual emphasis when generated */ box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+.report-actions { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+.report-buttons { display:flex; gap:8px; flex-wrap:wrap; }
+.report-options { display:flex; gap:16px; flex-wrap:nowrap; align-items:center; font-size:12px; color: rgba(230,238,248,0.8); }
+.report-options label { display:flex; gap:6px; align-items:center; cursor:pointer; white-space:nowrap; }
+.report-options .options-label { font-weight:600; color: rgba(230,238,248,0.9); }
+.report-block { border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:12px; margin-bottom:12px; background: rgba(255,255,255,0.02); }
+.report-block h3 { margin:0 0 6px 0; font-size:16px; }
+.report-block p { margin:0 0 6px 0; line-height:1.5; }
+.report-block.error { border-color: rgba(255,120,120,0.4); background: rgba(255,120,120,0.05); }
+.report-preview { margin-top:8px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:4px; }
+.report-preview-label { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12px; color: rgba(230,238,248,0.75); }
+.report-preview pre { margin:0; padding:8px; color: rgba(230,238,248,0.85); white-space:pre-wrap; word-break:break-all; }
 
 .row-third {
   grid-template-columns: repeat(3, 1fr);

@@ -125,7 +125,7 @@ test_data.csv
 test_data.xlsx
 test_financial_data.csv
 test_total_formula.xlsx
-
+*.xls
 # Python virtual environments
 venv/
 ENV/
@@ -168,3 +168,5 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+src/main/resources/static

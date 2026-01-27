@@ -219,14 +219,14 @@ async function onRunCommand(command: string) {
       setTablePreview
     })
   } catch (err:any) {
-    lastError.value = (err && (err.body?.error || err.message)) || '服务端错误'
+    lastError.value = (err && (err.body?.error || err.message)) || t('serverError')
     failedCommand.value = command
   }
 }
 
 async function onExport() {
   if (!lastFile.value || !lastCommand.value) {
-    alert('需要已上传的文件和最近的命令才能导出')
+    alert(t('exportGuard'))
     return
   }
   try {
@@ -241,7 +241,7 @@ async function onExport() {
     a.remove()
     URL.revokeObjectURL(url)
   } catch (e:any) {
-    const msg = (e && (e.body?.error || e.message)) || '导出失败'
+    const msg = (e && (e.body?.error || e.message)) || t('exportFailed')
     lastError.value = msg
     failedCommand.value = lastCommand.value
     alert(msg)
@@ -476,7 +476,7 @@ async function handleApply(cmd: string, id?: number) {
         try {
           applyCommands(tok)
           try { await saveTableAsExcel() } catch (e) { /* ignore save errors */ }
-          const doneLine = `已执行: ${inner}`
+          const doneLine = t('executedWith', { content: inner })
           if (origIdx !== -1) {
             const prev2 = aiMessages.value[origIdx].text || ''
             aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev2}\n${doneLine}` })
@@ -484,7 +484,7 @@ async function handleApply(cmd: string, id?: number) {
             aiMessages.value.push({ id: Date.now(), role: 'ai', text: doneLine })
           }
         } catch (e:any) {
-          const failLine = `执行失败: ${inner} -> ${(e && e.message) || e}`
+          const failLine = t('executeFailed', { content: inner, error: (e && e.message) || e })
           if (origIdx !== -1) {
             const prev2 = aiMessages.value[origIdx].text || ''
             aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev2}\n${failLine}` })
@@ -503,7 +503,7 @@ async function handleApply(cmd: string, id?: number) {
         await new Promise(res => setTimeout(res, 300))
         try {
           applyCommands(ln)
-          const doneLine = `已执行: ${ln.replace(/\[|\]/g, '')}`
+          const doneLine = t('executedWith', { content: ln.replace(/\[|\]/g, '') })
           if (origIdx !== -1) {
             const prev = aiMessages.value[origIdx].text || ''
             aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n${doneLine}` })
@@ -511,7 +511,7 @@ async function handleApply(cmd: string, id?: number) {
             aiMessages.value.push({ id: Date.now(), role: 'ai', text: doneLine })
           }
         } catch (e:any) {
-          const failLine = `执行失败: ${ln} -> ${(e && e.message) || e}`
+          const failLine = t('executeFailed', { content: ln, error: (e && e.message) || e })
           if (origIdx !== -1) {
             const prev = aiMessages.value[origIdx].text || ''
             aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n${failLine}` })
@@ -525,7 +525,7 @@ async function handleApply(cmd: string, id?: number) {
     const idx = executingIds.value.indexOf(msgKey)
     if (idx !== -1) executingIds.value.splice(idx, 1)
     // After executing, mark token-level as skipped/applied so UI no longer shows Execute button
-    try { handleSkipToken(msgKey, msgId, undefined, '已执行') } catch (e) { /* ignore */ }
+    try { handleSkipToken(msgKey, msgId, undefined, t('executedNote')) } catch (e) { /* ignore */ }
   }
 }
 
@@ -591,7 +591,7 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
   if (!appliedIds.value.includes(tokenKey)) appliedIds.value.push(tokenKey)
   const origMsgId = typeof msgId === 'number' ? msgId : Number((tokenKey || '').split('-')[0])
   const origIdx = aiMessages.value.findIndex(x => x.id === origMsgId)
-  const text = note || '已跳过'
+  const text = note || t('skippedNote')
   if (origIdx !== -1) {
     const prev = aiMessages.value[origIdx].text || ''
     aiMessages.value.splice(origIdx, 1, { ...aiMessages.value[origIdx], text: `${prev}\n${text}` })

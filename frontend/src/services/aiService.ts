@@ -105,6 +105,49 @@ export async function filterData(file: File, filterColumn: string, filterValue: 
   return fetchJson('/api/excel/filter-data', { method: 'POST', body: formData });
 }
 
+export async function analyzeFinancial(file: File, type = 'comprehensive') {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (type) formData.append('type', type)
+  return fetchJson('/api/analysis/financial', { method: 'POST', body: formData })
+}
+
+export async function analyzeFinancialRatios(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/financial-ratios', { method: 'POST', body: formData })
+}
+
+export async function analyzeProfitability(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/profitability', { method: 'POST', body: formData })
+}
+
+export async function analyzeCashFlow(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/cash-flow', { method: 'POST', body: formData })
+}
+
+export async function analyzeBudgetActual(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/budget-actual', { method: 'POST', body: formData })
+}
+
+export async function analyzeRfm(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/rfm', { method: 'POST', body: formData })
+}
+
+export async function analyzeClv(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/clv', { method: 'POST', body: formData })
+}
+
 export async function chat(message: string) {
   return fetchJson('/api/ai/chat', {
     method: 'POST',

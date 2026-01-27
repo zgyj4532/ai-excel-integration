@@ -11,8 +11,8 @@
         <div class="card">
           <h4>{{ $t('apiConfig') }}</h4>
           <div class="api-config">
-            <label>API Endpoint:</label>
-            <input v-model="apiEndpoint" :placeholder="apiEndpoint" />
+            <label>{{ $t('apiEndpointLabel') }}</label>
+            <input v-model="apiEndpoint" :placeholder="$t('apiEndpointPlaceholder')" />
             <button @click="saveApiConfig" class="save-btn">{{ $t('saveBtn') }}</button>
           </div>
           <div class="muted" style="margin-top: 8px;">{{ $t('currentApi', { api: apiEndpoint }) }}</div>
@@ -41,39 +41,39 @@
         </div>
 
         <div class="card system-config-card">
-          <h4>系统配置</h4>
+          <h4>{{ $t('systemConfigTitle') }}</h4>
           <div class="system-config">
             <div class="config-item">
               <label>
-                <input type="checkbox" v-model="autoSave" /> 自动保存
+                <input type="checkbox" v-model="autoSave" /> {{ $t('autoSaveLabel') }}
               </label>
             </div>
             <div class="config-item">
               <label>
-                <input type="checkbox" v-model="notifications" /> 启用通知
+                <input type="checkbox" v-model="notifications" /> {{ $t('notificationsLabel') }}
               </label>
             </div>
             <div class="config-item">
-              <label>主题: 
+              <label>{{ $t('themeLabel') }}: 
                 <select v-model="theme">
-                  <option value="light">浅色</option>
-                  <option value="dark">深色</option>
+                  <option value="light">{{ $t('themeLight') }}</option>
+                  <option value="dark">{{ $t('themeDark') }}</option>
                 </select>
               </label>
             </div>
           </div>
-          <button @click="saveSystemConfig" class="save-btn">保存配置</button>
+          <button @click="saveSystemConfig" class="save-btn">{{ $t('saveConfigBtn') }}</button>
         </div>
       </div>
 
       <!-- 第三行：关于（全宽） -->
       <div class="row row-third">
         <div class="card about-card">
-          <h4>关于</h4>
+          <h4>{{ $t('aboutTitle') }}</h4>
           <div class="about-info">
-            <p>AI Excel v1.0</p>
-            <p>企业级AI驱动的Excel数据处理与分析平台</p>
-            <p>© 2026 AI Excel Team</p>
+            <p>{{ $t('aboutLine1') }}</p>
+            <p>{{ $t('aboutLine2') }}</p>
+            <p>{{ $t('aboutCopyright') }}</p>
           </div>
         </div>
       </div>
@@ -182,11 +182,11 @@ async function saveSystemConfig() {
   try {
     const result = await saveSystemSettings(settings)
     if (result.success) {
-      alert('系统配置保存成功')
+      alert(t('saveConfigSuccess'))
     }
   } catch (error) {
     console.error('保存配置失败:', error)
-    alert('保存配置失败')
+    alert(t('saveConfigFailed'))
   }
 }
 
