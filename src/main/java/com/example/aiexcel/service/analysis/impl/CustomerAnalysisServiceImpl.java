@@ -37,7 +37,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
             "Perform RFM (Recency, Frequency, Monetary) analysis on this data. " +
             "Segment customers based on RFM scores (1-5 scale for each factor). " +
             "Identify high-value customers, at-risk customers, and sleeping beauties. " +
-            "Provide a detailed analysis of customer segments and recommendations for each segment.",
+            "Provide a detailed analysis of customer segments and recommendations for each segment. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -53,7 +54,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
                 "For Recency: higher score for more recent purchases. " +
                 "For Frequency: higher score for more frequent purchases. " +
                 "For Monetary: higher score for higher spending. " +
-                "Provide actionable insights for each segment."),
+                "Provide actionable insights for each segment. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -85,7 +87,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
             "Calculate Customer Lifetime Value (CLV) for the customers. " +
             "Consider factors like average purchase value, purchase frequency, customer lifespan, and profit margin. " +
             "Identify high-value customers based on their CLV scores. " +
-            "Provide a detailed breakdown of how CLV was calculated and recommendations for customer retention strategies.",
+            "Provide a detailed breakdown of how CLV was calculated and recommendations for customer retention strategies. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -98,7 +101,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
                 "Alternatively, it can be calculated using: " +
                 "CLV = Average Order Value × Number of Repeat Purchases × Average Customer Lifespan. " +
                 "Provide a detailed analysis of customer segments based on their CLV, " +
-                "and suggest strategies to increase CLV for different segments."),
+                "and suggest strategies to increase CLV for different segments. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -130,7 +134,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
             "Perform customer segmentation analysis. " +
             "Use various criteria like demographics, behavior, purchase history, and value to segment customers. " +
             "Classify customers into segments such as VIP, Regular, Potential, At-risk, etc. " +
-            "Provide characteristics of each segment and specific marketing strategies for each segment.",
+            "Provide characteristics of each segment and specific marketing strategies for each segment. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -147,7 +152,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
                 "3. Behavioral Segmentation " +
                 "4. Psychographic Segmentation " +
                 "5. Geographic Segmentation " +
-                "Provide actionable insights for each segment and suggest tailored strategies."),
+                "Provide actionable insights for each segment and suggest tailored strategies. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -180,7 +186,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
             "Identify customers who are most likely to stop using the service or product. " +
             "Consider factors such as: decrease in purchase frequency, longer time since last purchase, " +
             "decrease in order value, inactivity periods, customer complaints, etc. " +
-            "Provide a risk score for each customer segment and suggest retention strategies.",
+            "Provide a risk score for each customer segment and suggest retention strategies. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -197,7 +204,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
                 "6. Price sensitivity " +
                 "7. Switch to competitors " +
                 "Provide a risk classification (Low/Medium/High), " +
-                "list customers at highest risk, and suggest targeted retention strategies."),
+                "list customers at highest risk, and suggest targeted retention strategies. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -229,7 +237,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
             "Calculate and analyze Customer Acquisition Cost (CAC) versus Customer Lifetime Value (CLV). " +
             "Determine the CAC:CLV ratio and provide insights on acquisition efficiency. " +
             "Identify the most cost-effective acquisition channels and suggest optimization strategies. " +
-            "Explain the importance of maintaining a healthy CAC:CLV ratio (typically 1:3 as a benchmark).",
+            "Explain the importance of maintaining a healthy CAC:CLV ratio (typically 1:3 as a benchmark). " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -243,7 +252,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
                 "A healthy ratio is typically 1:3 (CLV should be 3x CAC). " +
                 "If the ratio is too low (e.g., 1:1), it means the company is spending too much to acquire customers. " +
                 "If the ratio is too high (e.g., 1:10), it might mean the company is under-spending on acquisition. " +
-                "Provide analysis of the ratio, identify most effective channels, and suggest optimization strategies."),
+                "Provide analysis of the ratio, identify most effective channels, and suggest optimization strategies. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -276,7 +286,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
             "Group customers by acquisition period (e.g., month or quarter of first purchase) " +
             "and track their retention rates over time. " +
             "Calculate retention rates for each cohort and identify patterns. " +
-            "Provide insights on which cohorts have the best retention and suggest reasons.",
+            "Provide insights on which cohorts have the best retention and suggest reasons. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -292,7 +303,8 @@ public class CustomerAnalysisServiceImpl implements CustomerAnalysisService {
                 "3. Engagement metrics over time\n" +
                 "4. Identify trends in customer loyalty\n" +
                 "5. Compare performance between different cohorts\n" +
-                "Explain the insights and suggest actions based on cohort performance."),
+                "Explain the insights and suggest actions based on cohort performance. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 

@@ -50,7 +50,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
                 "For Income Statement: focus on revenue growth, cost control, and profitability. " +
                 "For Balance Sheet: focus on liquidity, leverage, and asset utilization. " +
                 "For Cash Flow Statement: focus on operating cash flow, investment needs, and financing activities. " +
-                "Provide actionable insights and recommendations. Please respond in Chinese."),
+                "Provide actionable insights and recommendations. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -109,7 +110,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
                 "- Asset Turnover = Revenue / Average Total Assets\n" +
                 "- Inventory Turnover = Cost of Goods Sold / Average Inventory\n\n" +
                 "Provide interpretations of what each ratio indicates about the company's performance " +
-                "and how they compare to industry benchmarks. Please respond in Chinese."),
+                "and how they compare to industry benchmarks. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 

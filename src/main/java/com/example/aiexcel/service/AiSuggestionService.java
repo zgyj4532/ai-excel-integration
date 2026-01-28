@@ -52,7 +52,7 @@ public class AiSuggestionService {
             // 构建AI请求
             List<AiRequest.Message> messages = new ArrayList<>();
             
-            messages.add(new AiRequest.Message("system", 
+            messages.add(new AiRequest.Message("system",
                 "You are an Excel data analysis expert. Analyze the provided Excel data and provide intelligent suggestions " +
                 "for better data management, formatting, analysis, or visualization. " +
                 "Consider common Excel best practices, data cleaning techniques, chart suggestions, " +
@@ -133,7 +133,7 @@ public class AiSuggestionService {
                 "suggest optimal Excel configurations, formatting options, and analytical approaches for each data type. " +
                 "Consider how to best represent different data types in Excel for maximum usability and analysis."));
 
-            String userMessage = "Data type analysis for Excel sheet:\n\n" + analysisSummary.toString() + 
+            String userMessage = "Data type analysis for Excel sheet:\n\n" + analysisSummary.toString() +
                                 "\n\nPlease provide specific suggestions for handling each data type, " +
                                 "including formatting recommendations, formula suggestions, " +
                                 "and best practices for data management based on the types present.";
@@ -192,7 +192,7 @@ public class AiSuggestionService {
                 "suggest improvements to make the spreadsheet more readable, professional, and functional. " +
                 "Consider header formatting, data alignment, color schemes, borders, and conditional formatting."));
 
-            String userMessage = "Current formatting analysis:\n\n" + currentFormatAnalysis.toString() + 
+            String userMessage = "Current formatting analysis:\n\n" + currentFormatAnalysis.toString() +
                                 "\n\nPlease provide specific formatting suggestions to improve the appearance " +
                                 "and usability of this Excel sheet. Include suggestions for fonts, colors, " +
                                 "borders, alignment, and any other formatting that would enhance the data presentation.";

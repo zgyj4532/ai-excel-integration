@@ -96,6 +96,11 @@
               <div class="report-buttons">
                 <button @click="onGenerateReportClick" class="generate-report-btn">{{ $t('generateReportBtn') }}</button>
                 <button @click="onLoadApiExample" class="generate-report-btn" style="margin-left:8px">{{ $t('loadApiExample') }}</button>
+                <button
+                  v-if="reportGenerated"
+                  @click="onDownloadReport"
+                  class="generate-report-btn download-report-btn"
+                >下载报告</button>
               </div>
               <div class="report-options">
                 <span class="options-label">{{ $t('optionalAnalyses') }}</span>
@@ -103,6 +108,8 @@
                 <label><input type="checkbox" v-model="includeProfitability" />{{ $t('includeProfitability') }}</label>
                 <label><input type="checkbox" v-model="includeCashFlow" />{{ $t('includeCashFlow') }}</label>
                 <label><input type="checkbox" v-model="includeBudgetActual" />{{ $t('includeBudgetActual') }}</label>
+                <label><input type="checkbox" v-model="includeRfm" />{{ $t('includeRfm') }}</label>
+                <label><input type="checkbox" v-model="includeClv" />{{ $t('includeClv') }}</label>
               </div>
             </div>
 
@@ -126,7 +133,7 @@
         </div>
 
       <!-- 第三行：RFM / CLV / 财务，三列等分 -->
-      <div class="row row-third">
+      <!-- <div class="row row-third">
         <div class="card">
           <h4>{{ $t('rfmTitle') }}</h4>
           <p class="muted">{{ $t('rfmDesc') }}</p>
@@ -144,7 +151,7 @@
           <p class="muted">{{ $t('financeDesc') }}</p>
           <button @click="onFinanceClick" class="finance-btn">{{ $t('financeBtn') }}</button>
         </div>
-      </div>
+      </div> -->
     </div>
   </div>
 </template>
@@ -155,6 +162,8 @@ import { getAnalysisCenterData } from '@/services/api'
 import { ref, nextTick, onMounted, watch } from 'vue'
 import { XMarkdown } from 'vue-element-plus-x'
 import * as XLSX from 'xlsx'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 import {
   analyzeBudgetActual,
   analyzeCashFlow,
@@ -195,6 +204,8 @@ const includeFinancialRatios = ref(false)
 const includeProfitability = ref(false)
 const includeCashFlow = ref(false)
 const includeBudgetActual = ref(false)
+const includeRfm = ref(false)
+const includeClv = ref(false)
 
 function numToCol(n: number) {
   let s = ''
@@ -619,23 +630,26 @@ async function onGenerateReportClick() {
   reportMarkdown.value = '生成中...'
   const file = savedFile.value
   const sections: string[] = []
-  const hasOptional = includeFinancialRatios.value || includeProfitability.value || includeCashFlow.value || includeBudgetActual.value
+  let previewFinal = ''
+  const hasOptional = includeFinancialRatios.value || includeProfitability.value || includeCashFlow.value || includeBudgetActual.value || includeRfm.value || includeClv.value
 
   try {
     // 基础：财务报表分析（必调）
     try {
       const res = await analyzeFinancial(file)
-      sections.push(renderSectionMd(t('reportSectionFinancial'), (res as any)?.financialAnalysis || (res as any)?.analysis, (res as any)?.excelDataPreview))
+      if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+      sections.push(renderSectionMd(t('reportSectionFinancial'), (res as any)?.financialAnalysis || (res as any)?.analysis, undefined))
     } catch (err) {
       sections.push(renderErrorMd(t('reportSectionFinancial'), err))
     }
 
-    // 选填：财务比率、盈利能力、现金流、预算对比
+    // 选填：财务比率、盈利能力、现金流、预算对比、RFM、CLV
     if (hasOptional) {
       if (includeFinancialRatios.value) {
         try {
           const res = await analyzeFinancialRatios(file)
-          sections.push(renderSectionMd(t('reportSectionFinancialRatios'), (res as any)?.financialRatios, (res as any)?.excelDataPreview))
+          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+          sections.push(renderSectionMd(t('reportSectionFinancialRatios'), (res as any)?.financialRatios, undefined))
         } catch (err) {
           sections.push(renderErrorMd(t('reportSectionFinancialRatios'), err))
         }
@@ -644,7 +658,8 @@ async function onGenerateReportClick() {
       if (includeProfitability.value) {
         try {
           const res = await analyzeProfitability(file)
-          sections.push(renderSectionMd(t('reportSectionProfitability'), (res as any)?.profitabilityAnalysis, (res as any)?.excelDataPreview))
+          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+          sections.push(renderSectionMd(t('reportSectionProfitability'), (res as any)?.profitabilityAnalysis, undefined))
         } catch (err) {
           sections.push(renderErrorMd(t('reportSectionProfitability'), err))
         }
@@ -653,7 +668,8 @@ async function onGenerateReportClick() {
       if (includeCashFlow.value) {
         try {
           const res = await analyzeCashFlow(file)
-          sections.push(renderSectionMd(t('reportSectionCashFlow'), (res as any)?.cashFlowAnalysis, (res as any)?.excelDataPreview))
+          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+          sections.push(renderSectionMd(t('reportSectionCashFlow'), (res as any)?.cashFlowAnalysis, undefined))
         } catch (err) {
           sections.push(renderErrorMd(t('reportSectionCashFlow'), err))
         }
@@ -662,26 +678,36 @@ async function onGenerateReportClick() {
       if (includeBudgetActual.value) {
         try {
           const res = await analyzeBudgetActual(file)
-          sections.push(renderSectionMd(t('reportSectionBudgetActual'), (res as any)?.budgetActualAnalysis, (res as any)?.excelDataPreview))
+          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+          sections.push(renderSectionMd(t('reportSectionBudgetActual'), (res as any)?.budgetActualAnalysis, undefined))
         } catch (err) {
           sections.push(renderErrorMd(t('reportSectionBudgetActual'), err))
         }
       }
 
-      // 客户分析接口：RFM / CLV 接入到自动报告
-      try {
-        const res = await analyzeRfm(file)
-        sections.push(renderSectionMd(t('reportSectionRfm'), (res as any)?.rfmAnalysis, (res as any)?.excelDataPreview))
-      } catch (err) {
-        sections.push(renderErrorMd(t('reportSectionRfm'), err))
+      if (includeRfm.value) {
+        try {
+          const res = await analyzeRfm(file)
+          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+          sections.push(renderSectionMd(t('reportSectionRfm'), (res as any)?.rfmAnalysis, undefined))
+        } catch (err) {
+          sections.push(renderErrorMd(t('reportSectionRfm'), err))
+        }
       }
 
-      try {
-        const res = await analyzeClv(file)
-        sections.push(renderSectionMd(t('reportSectionClv'), (res as any)?.clvAnalysis, (res as any)?.excelDataPreview))
-      } catch (err) {
-        sections.push(renderErrorMd(t('reportSectionClv'), err))
+      if (includeClv.value) {
+        try {
+          const res = await analyzeClv(file)
+          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+          sections.push(renderSectionMd(t('reportSectionClv'), (res as any)?.clvAnalysis, undefined))
+        } catch (err) {
+          sections.push(renderErrorMd(t('reportSectionClv'), err))
+        }
       }
+    }
+
+    if (previewFinal) {
+      sections.push(`**${t('reportPreviewTitle')}**\n\n\u0060\u0060\u0060\n${previewFinal}\n\u0060\u0060\u0060`)
     }
 
     reportMarkdown.value = sections.join('\n\n') || t('reportNoContent')
@@ -697,6 +723,92 @@ async function onGenerateReportClick() {
     }
   } finally {
     reportGenerating.value = false
+  }
+}
+
+async function onDownloadReport() {
+  if (!reportGenerated.value || !reportMarkdown.value) {
+    alert(t('reportNoContent'))
+    return
+  }
+  const el = document.querySelector('.auto-report-card .report-content') as HTMLElement | null
+  if (!el) {
+    alert(t('reportNoContent'))
+    return
+  }
+  try {
+    const card = document.querySelector('.auto-report-card') as HTMLElement | null
+    const bgColor = '#19202C'
+    const headings = Array.from(el.querySelectorAll('h3')) as HTMLElement[]
+    const sections: HTMLElement[] = []
+
+    if (!headings.length) {
+      sections.push(el.cloneNode(true) as HTMLElement)
+    } else {
+      const headingSet = new Set(headings)
+      headings.forEach((h, idx) => {
+        const section = document.createElement('div')
+        section.style.padding = '12px'
+        section.style.background = bgColor
+        section.style.width = `${el.clientWidth || el.offsetWidth || 800}px`
+        let node: Node | null = h
+        while (node) {
+          section.appendChild(node.cloneNode(true))
+          node = node.nextSibling
+          if (node && node.nodeType === 1 && headingSet.has(node as HTMLElement)) break
+        }
+        sections.push(section)
+      })
+    }
+
+    const staging = document.createElement('div')
+    staging.style.position = 'fixed'
+    staging.style.left = '-99999px'
+    staging.style.top = '0'
+    staging.style.zIndex = '-1'
+    staging.style.background = bgColor
+    document.body.appendChild(staging)
+
+    const pdf = new jsPDF('p', 'pt', 'a4')
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 20
+    pdf.setFillColor(25, 32, 44)
+    pdf.rect(0, 0, pageWidth, pageHeight, 'F')
+    let cursorY = margin
+
+    for (const section of sections) {
+      staging.appendChild(section)
+      const canvas = await html2canvas(section, { scale: 2, useCORS: true, backgroundColor: bgColor })
+      const imgData = canvas.toDataURL('image/png')
+      const imgWidth = pageWidth - margin * 2
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      if (cursorY + imgHeight > pageHeight - margin) {
+        pdf.addPage()
+        pdf.setFillColor(25, 32, 44)
+        pdf.rect(0, 0, pageWidth, pageHeight, 'F')
+        cursorY = margin
+      }
+
+      pdf.addImage(imgData, 'PNG', margin, cursorY, imgWidth, imgHeight)
+      cursorY += imgHeight + 10
+
+      staging.removeChild(section)
+    }
+
+    document.body.removeChild(staging)
+
+    const blob = pdf.output('blob')
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'auto-report.pdf'
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('download report failed', err)
+    alert(t('downloadFailed') || '下载失败')
   }
 }
 
@@ -828,6 +940,7 @@ function onFinanceClick() {
   cursor: pointer;
   margin-top: 12px;
 }
+.download-report-btn { margin-left: auto; white-space: nowrap; }
 
 /* Two-row layout */
 .row {
@@ -952,6 +1065,19 @@ function onFinanceClick() {
 .auto-report-card .report-content :deep(.shiki .line span),
 .auto-report-card .report-content :deep(.shiki .line-content) {
   color: rgba(230,238,248,0.9) !important;
+}
+.auto-report-card .report-content :deep(table),
+.auto-report-card .report-content :deep(thead),
+.auto-report-card .report-content :deep(tbody),
+.auto-report-card .report-content :deep(tr),
+.auto-report-card .report-content :deep(th),
+.auto-report-card .report-content :deep(td) {
+  background: transparent !important;
+  color: rgba(230,238,248,0.9) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+.auto-report-card .report-content :deep(th) {
+  font-weight: 700;
 }
 .auto-report-card.generated { /* extra visual emphasis when generated */ box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
 .report-actions { display:flex; flex-direction:column; gap:8px; margin:8px 0; }

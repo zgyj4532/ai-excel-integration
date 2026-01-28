@@ -87,7 +87,9 @@ public class AiExcelController {
                     return ResponseEntity.badRequest().body(response);
                 }
             }
-            Map<String, Object> result = aiExcelIntegrationService.processExcelWithAI(file, command);
+            // 确保AI输出使用中文
+            String chineseCommand = command + " Please respond in Chinese.";
+            Map<String, Object> result = aiExcelIntegrationService.processExcelWithAI(file, chineseCommand);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -182,7 +184,9 @@ public class AiExcelController {
             @RequestParam("analysisRequest") String analysisRequest) {
         logger.info("/api/ai/excel-analyze called, file={}, analysisRequest={}", file == null ? "<none>" : file.getOriginalFilename(), analysisRequest);
         try {
-            Map<String, Object> result = aiExcelIntegrationService.analyzeExcelData(file, analysisRequest);
+            // 确保AI分析结果使用中文
+            String chineseAnalysisRequest = analysisRequest + " Please respond in Chinese.";
+            Map<String, Object> result = aiExcelIntegrationService.analyzeExcelData(file, chineseAnalysisRequest);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -524,8 +528,9 @@ public class AiExcelController {
         }
 
         try {
-            // 使用AI服务回复用户消息
-            String aiResponse = aiExcelIntegrationService.chatWithAI(userMessage);
+            // 使用AI服务回复用户消息，并确保使用中文
+            String chineseUserMessage = userMessage + " Please respond in Chinese.";
+            String aiResponse = aiExcelIntegrationService.chatWithAI(chineseUserMessage);
 
             Map<String, Object> response = Map.of(
                 "success", true,
@@ -564,8 +569,9 @@ public class AiExcelController {
         }
 
         try {
-            // 使用AI服务回复用户消息
-            String aiResponse = aiExcelIntegrationService.chatWithAI(userMessage);
+            // 使用AI服务回复用户消息，并确保使用中文
+            String chineseUserMessage = userMessage + " Please respond in Chinese.";
+            String aiResponse = aiExcelIntegrationService.chatWithAI(chineseUserMessage);
 
             Map<String, Object> response = Map.of(
                 "success", true,
@@ -597,8 +603,9 @@ public class AiExcelController {
                     return;
                 }
 
-                // 使用AI服务回复用户消息
-                String aiResponse = aiExcelIntegrationService.chatWithAI(message);
+                // 使用AI服务回复用户消息，并确保使用中文
+                String chineseMessage = message + " Please respond in Chinese.";
+                String aiResponse = aiExcelIntegrationService.chatWithAI(chineseMessage);
 
                 // 先发送一个开始事件
                 emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event()
@@ -876,7 +883,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataCleaning(file, instructions);
+            // 确保AI数据清洗指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataCleaning(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -898,7 +907,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataTransformation(file, instructions);
+            // 确保AI数据转换指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataTransformation(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -920,7 +931,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataAnalysis(file, instructions);
+            // 确保AI数据分析指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataAnalysis(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -942,7 +955,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartChartCreation(file, instructions);
+            // 确保AI图表创建指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartChartCreation(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -964,7 +979,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataValidation(file, instructions);
+            // 确保AI数据验证指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataValidation(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
