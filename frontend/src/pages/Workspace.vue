@@ -45,11 +45,11 @@
           </div>
 
           <div v-show="activeTab === 'analysis'">
-            <Analysis />
+            <Analysis :saved-file-id="lastSavedFileId" :last-file="lastFile" />
           </div>
 
           <div v-show="activeTab === 'templates'">
-            <Templates />
+            <Templates @template-response="onTemplateResponse" />
           </div>
         </div>
       </section>
@@ -114,6 +114,12 @@ const autoSaveEnabled = ref(true)
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 let autosaveTimer: number | null = null
 const lastSavedFileId = ref<string | null>(null)
+
+function onTemplateResponse(text: string) {
+  aiActive.value = true
+  const msg = String(text || '') || t('serverError')
+  aiMessages.value.push({ id: Date.now(), role: 'ai', text: msg })
+}
 
 async function uploadTableToServer(wbout: Uint8Array | ArrayBuffer, name: string) {
   try {
@@ -344,6 +350,7 @@ function loadFromStorage() {
 onMounted(() => loadFromStorage())
 
 function colLetterToIndex(letters: string) { let n = 0; for (let i = 0; i < letters.length; i++) { n = n * 26 + (letters.charCodeAt(i) - 64) } return n - 1 }
+function colIndexToLetter(idx: number) { let n = idx + 1; let s = ''; while (n > 0) { const rem = (n - 1) % 26; s = String.fromCharCode(65 + rem) + s; n = Math.floor((n - 1) / 26) } return s }
 function evalFormula(expr: string, grid: string[][]) {
   const replaced = expr.replace(/([A-Z]+\d+)/g, (m) => {
     const col = colLetterToIndex(m.replace(/\d+/, ''))
@@ -356,24 +363,197 @@ function evalFormula(expr: string, grid: string[][]) {
   } catch (e) { return '' }
 }
 
+function getRangeValues(range: string) {
+  const m = String(range || '').match(/^([A-Z]+\d+):([A-Z]+\d+)$/i)
+  if (!m) return []
+  const startRef = m[1]
+  const endRef = m[2]
+  const startCol = colLetterToIndex(startRef.replace(/\d+/, ''))
+  const startRow = Number(startRef.replace(/[^0-9]/g, ''))
+  const endCol = colLetterToIndex(endRef.replace(/\d+/, ''))
+  const endRow = Number(endRef.replace(/[^0-9]/g, ''))
+  const vals: Array<string | number> = []
+  for (let r = Math.min(startRow, endRow); r <= Math.max(startRow, endRow); r++) {
+    for (let c = Math.min(startCol, endCol); c <= Math.max(startCol, endCol); c++) {
+      const row = tableData.value[r - 1]
+      if (!row) continue
+      vals.push(row[c])
+    }
+  }
+  return vals
+}
+
+function parseNumber(v: any) {
+  const num = Number(String(v || '').replace(/[^0-9.\-]/g, ''))
+  return Number.isNaN(num) ? undefined : num
+}
+
+function countIf(values: Array<any>, condition: string) {
+  const cond = String(condition || '').trim()
+  const opMatch = cond.match(/^(>=|<=|>|<|==|=|!=)\s*(.+)$/)
+  if (!opMatch) return 0
+  const op = opMatch[1]
+  const rhsRaw = opMatch[2]
+  const rhsNum = Number(rhsRaw)
+  return values.reduce((acc, v) => {
+    const num = parseNumber(v)
+    if (num === undefined) return acc
+    switch (op) {
+      case '>': return acc + (num > rhsNum ? 1 : 0)
+      case '>=': return acc + (num >= rhsNum ? 1 : 0)
+      case '<': return acc + (num < rhsNum ? 1 : 0)
+      case '<=': return acc + (num <= rhsNum ? 1 : 0)
+      case '!=': return acc + (num != rhsNum ? 1 : 0)
+      case '==':
+      case '=': return acc + (num === rhsNum ? 1 : 0)
+      default: return acc
+    }
+  }, 0)
+}
+
+// Replace COUNTIF occurrences inside a larger expression so we can still eval arithmetic like COUNTIF(...)/36
+function replaceCountIfExpressions(expr: string) {
+  return String(expr || '').replace(/COUNTIF\(([A-Z]+\d+):([A-Z]+\d+),\s*"([^"]+)"\)/gi, (_, start: string, end: string, cond: string) => {
+    const vals = getRangeValues(`${start}:${end}`)
+    const cnt = countIf(vals, cond)
+    return String(cnt)
+  })
+}
+
+function ensureCell(ref: string) {
+  const col = colLetterToIndex(ref.replace(/\d+/, ''))
+  const row = Number(ref.replace(/[^0-9]/g, ''))
+  while (tableData.value.length < row) {
+    const cols = tableData.value[0] ? tableData.value[0].length : 0
+    tableData.value.push(Array.from({ length: cols }, () => ''))
+  }
+  for (let r = 0; r < tableData.value.length; r++) {
+    while ((tableData.value[r] || []).length <= col) {
+      if (!tableData.value[r]) tableData.value[r] = []
+      tableData.value[r].push('')
+    }
+  }
+  return { rowIndex: row - 1, colIndex: col }
+}
+
+function ensureRows(count: number) {
+  while (tableData.value.length < count) {
+    const cols = tableData.value[0] ? tableData.value[0].length : 0
+    tableData.value.push(Array.from({ length: cols }, () => ''))
+  }
+}
+
+function adjustRowRefs(formula: string, fromRow: number, toRow: number) {
+  const delta = toRow - fromRow
+  return String(formula || '').replace(/([A-Z]+)(\d+)/g, (_, c: string, r: string) => {
+    const nr = Number(r)
+    if (Number.isNaN(nr)) return _
+    return `${c}${nr + delta}`
+  })
+}
+
 function applyCommands(raw: string) {
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
   for (const ln of lines) {
-    const m = ln.match(/\[INSERT_COLUMN:(\d+):([^\]]+)\]/i)
-    if (m) {
-      const idx = Number(m[1])
-      const name = m[2]
-      if (!tableData.value[0]) tableData.value[0] = []
-      const colIndex = Math.min(idx, tableData.value[0].length)
+    let line = ln
+    const colonMatch = line.match(/^(?:token:\s*)?([A-Z]+\d+)\s*:\s*(.+)$/i)
+    if (colonMatch && !line.startsWith('[')) {
+      // Normalize plain colon syntax to APPLY_FORMULA token
+      line = `[APPLY_FORMULA:${colonMatch[1]}:${colonMatch[2]}]`
+    }
+
+    // FILL_DOWN by range e.g. J2:J35
+    const fillPlainMatch = line.match(/^(?:token:\s*)?([A-Z]+\d+):([A-Z]+\d+)$/i)
+    if (fillPlainMatch && !line.startsWith('[')) {
+      line = `[FILL_DOWN:${fillPlainMatch[1]}:${fillPlainMatch[2]}]`
+    }
+
+    // Label + formula e.g. K36:总人数,=COUNTA(B2:B35) -> put label at K36, value at next column
+    const labelFormulaMatch = line.match(/^(?:token:\s*)?([A-Z]+\d+):([^,]+),=?(.*)$/i)
+    if (labelFormulaMatch && !line.startsWith('[')) {
+      const ref = labelFormulaMatch[1]
+      const label = labelFormulaMatch[2]
+      const formula = labelFormulaMatch[3]
+      const pos = ensureCell(ref)
+      tableData.value[pos.rowIndex][pos.colIndex] = label
+      const nextColRef = `${colIndexToLetter(pos.colIndex + 1)}${pos.rowIndex + 1}`
+      applyCommands(`[APPLY_FORMULA:${nextColRef}:${formula}]`)
+      continue
+    }
+
+    const mInsertCol = line.match(/\[INSERT_COLUMN:(\d+):([^\]]*)\]/i)
+    if (mInsertCol) {
+      const idx = Number(mInsertCol[1])
+      const values = (mInsertCol[2] || '').split(',')
+      const requiredRows = Math.max(tableData.value.length || 0, values.length || 0)
+      ensureRows(requiredRows || 1)
+      const colIndex = Math.max(0, Math.min(idx - 1, tableData.value[0] ? tableData.value[0].length : 0))
       for (let r = 0; r < tableData.value.length; r++) {
         const row = tableData.value[r]
-        if (r === 0) row.splice(colIndex, 0, name)
-        else row.splice(colIndex, 0, '')
+        const val = values[r] !== undefined ? values[r] : ''
+        row.splice(colIndex, 0, val)
+      }
+      continue
+    }
+
+    const mInsertRow = line.match(/\[INSERT_ROW:(\d+):([^\]]*)\]/i)
+    if (mInsertRow) {
+      const idx = Number(mInsertRow[1])
+      const values = (mInsertRow[2] || '').split(',')
+      const cols = Math.max(tableData.value[0] ? tableData.value[0].length : 0, values.length)
+      if (!tableData.value[0]) tableData.value[0] = Array.from({ length: cols || 1 }, () => '')
+      ensureRows(idx)
+      const rowData = Array.from({ length: Math.max(cols, values.length, tableData.value[0].length) || 1 }, (_, i) => values[i] !== undefined ? values[i] : '')
+      tableData.value.splice(Math.max(idx - 1, 0), 0, rowData)
+      continue
+    }
+
+    const mDeleteRow = line.match(/\[DELETE_ROW:(\d+)\]/i)
+    if (mDeleteRow) {
+      const idx = Number(mDeleteRow[1])
+      if (idx >= 1 && idx <= tableData.value.length) tableData.value.splice(idx - 1, 1)
+      continue
+    }
+
+    const mDeleteCol = line.match(/\[DELETE_COLUMN:(\d+)\]/i)
+    if (mDeleteCol) {
+      const idx = Number(mDeleteCol[1]) - 1
+      if (idx >= 0) {
+        for (const row of tableData.value) {
+          if (row && row.length > idx) row.splice(idx, 1)
+        }
+      }
+      continue
+    }
+
+    const setMatch = line.match(/\[SET_CELL:([A-Z]+\d+):([^\]]+)\]/i)
+    if (setMatch) {
+      const ref = setMatch[1]
+      const value = setMatch[2]
+      const pos = ensureCell(ref)
+      tableData.value[pos.rowIndex][pos.colIndex] = value
+      continue
+    }
+
+    const fillMatch = line.match(/\[FILL_DOWN:([A-Z]+\d+):([A-Z]+\d+)\]/i)
+    if (fillMatch) {
+      const startRef = fillMatch[1]
+      const endRef = fillMatch[2]
+      const startPos = ensureCell(startRef)
+      const endPos = ensureCell(endRef)
+      const startRow = startPos.rowIndex
+      const endRow = endPos.rowIndex
+      const startColLetter = startRef.replace(/\d+/, '')
+      const value = (tableData.value[startRow] && tableData.value[startRow][startPos.colIndex]) || ''
+      for (let r = startRow; r <= endRow; r++) {
+        const pos = ensureCell(`${startColLetter}${r + 1}`)
+        const adjusted = adjustRowRefs(value, startRow + 1, r + 1)
+        tableData.value[pos.rowIndex][startPos.colIndex] = adjusted
       }
       continue
     }
     // support both [APPLY_FORMULA:F2:=SUM(...)] and [APPLY_FORMULA:F2:SUM(...)]
-    const m2 = ln.match(/\[APPLY_FORMULA:([A-Z]+\d+):=?(.+)\]/i)
+    const m2 = line.match(/\[APPLY_FORMULA:([A-Z]+\d+):=?(.+)\]/i)
     if (m2) {
       const cellRef = m2[1]
       // strip optional leading '=' from expression
@@ -397,32 +577,101 @@ function applyCommands(raw: string) {
         }
       }
 
-      // Support SUM(range) like SUM(B2:B15)
+      // SUM(range)
       const sumMatch = expr.match(/^SUM\(([A-Z]+\d+):([A-Z]+\d+)\)$/i)
       if (sumMatch) {
-        const startRef = sumMatch[1]
-        const endRef = sumMatch[2]
-        const startCol = colLetterToIndex(startRef.replace(/\d+/, ''))
-        const startRow = Number(startRef.replace(/[^0-9]/g, ''))
-        const endCol = colLetterToIndex(endRef.replace(/\d+/, ''))
-        const endRow = Number(endRef.replace(/[^0-9]/g, ''))
-
-        let total = 0
-        for (let r = Math.min(startRow, endRow); r <= Math.max(startRow, endRow); r++) {
-          for (let c = Math.min(startCol, endCol); c <= Math.max(startCol, endCol); c++) {
-            const row = tableData.value[r - 1]
-            if (!row) continue
-            const cell = row[c]
-            const num = Number(String(cell || '').replace(/[^0-9.\-]/g, ''))
-            if (!isNaN(num)) total += num
-          }
-        }
+        const vals = getRangeValues(`${sumMatch[1]}:${sumMatch[2]}`)
+        const total = vals.reduce((acc: number, v) => {
+          const num = parseNumber(v)
+          return acc + (num !== undefined ? num : 0)
+        }, 0)
         tableData.value[targetRow - 1][targetCol] = String(total)
         continue
       }
 
+      // AVERAGE(range)
+      const avgMatch = expr.match(/^AVERAGE\(([A-Z]+\d+):([A-Z]+\d+)\)$/i)
+      if (avgMatch) {
+        const vals = getRangeValues(`${avgMatch[1]}:${avgMatch[2]}`)
+        const nums = vals.map(parseNumber).filter((v) => v !== undefined) as number[]
+        const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0
+        tableData.value[targetRow - 1][targetCol] = String(avg)
+        continue
+      }
+
+      // IF(condition, trueVal, falseVal) simple compare against number
+      const ifMatch = expr.match(/^IF\(([^,]+),([^,]+),(.+)\)$/i)
+      if (ifMatch) {
+        const condition = ifMatch[1].trim()
+        const trueVal = ifMatch[2].trim()
+        const falseVal = ifMatch[3].trim()
+        const condMatch = condition.match(/([A-Z]+\d+)\s*(>=|<=|>|<|==|=|!=)\s*([0-9.]+)/i)
+        let condResult = false
+        if (condMatch) {
+          const ref = condMatch[1]
+          const op = condMatch[2]
+          const rhs = Number(condMatch[3])
+          const { rowIndex, colIndex } = ensureCell(ref)
+          const cellVal = parseNumber(tableData.value[rowIndex][colIndex]) || 0
+          switch (op) {
+            case '>': condResult = cellVal > rhs; break
+            case '>=': condResult = cellVal >= rhs; break
+            case '<': condResult = cellVal < rhs; break
+            case '<=': condResult = cellVal <= rhs; break
+            case '!=': condResult = cellVal != rhs; break
+            case '==':
+            case '=': condResult = cellVal === rhs; break
+          }
+        }
+        const pick = condResult ? trueVal : falseVal
+        const cleaned = pick.replace(/^"|"$/g, '')
+        tableData.value[targetRow - 1][targetCol] = cleaned
+        continue
+      }
+
+      // STDEV.P / STDEV.S
+      const stdevMatch = expr.match(/^STDEV\.(P|S)\(([A-Z]+\d+):([A-Z]+\d+)\)$/i)
+      if (stdevMatch) {
+        const vals = getRangeValues(`${stdevMatch[2]}:${stdevMatch[3]}`)
+        const nums = vals.map(parseNumber).filter((v) => v !== undefined) as number[]
+        const mean = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0
+        const variance = nums.length ? nums.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / (stdevMatch[1].toUpperCase() === 'S' && nums.length > 1 ? (nums.length - 1) : nums.length || 1) : 0
+        const stdev = Math.sqrt(variance)
+        tableData.value[targetRow - 1][targetCol] = String(stdev)
+        continue
+      }
+
+      // COUNT(range) counts numeric values
+      const countMatch = expr.match(/^COUNT\(([A-Z]+\d+):([A-Z]+\d+)\)$/i)
+      if (countMatch) {
+        const vals = getRangeValues(`${countMatch[1]}:${countMatch[2]}`)
+        const cnt = vals.reduce((acc: number, v) => acc + (parseNumber(v) !== undefined ? 1 : 0), 0)
+        tableData.value[targetRow - 1][targetCol] = String(cnt)
+        continue
+      }
+
+      // COUNTA(range) counts non-empty
+      const countAMatch = expr.match(/^COUNTA\(([A-Z]+\d+):([A-Z]+\d+)\)$/i)
+      if (countAMatch) {
+        const vals = getRangeValues(`${countAMatch[1]}:${countAMatch[2]}`)
+        const cnt = vals.reduce((acc: number, v) => acc + (v !== undefined && v !== null && String(v).trim() !== '' ? 1 : 0), 0)
+        tableData.value[targetRow - 1][targetCol] = String(cnt)
+        continue
+      }
+
+      // COUNTIF(range, "<60")
+      const countIfMatch = expr.match(/^COUNTIF\(([A-Z]+\d+):([A-Z]+\d+),\s*"([^"]+)"\)$/i)
+      if (countIfMatch) {
+        const vals = getRangeValues(`${countIfMatch[1]}:${countIfMatch[2]}`)
+        const cond = countIfMatch[3]
+        const cnt = countIf(vals, cond)
+        tableData.value[targetRow - 1][targetCol] = String(cnt)
+        continue
+      }
+
       // Fallback: evaluate simple expressions by replacing cell refs with numeric values
-      const value = evalFormula(expr, tableData.value)
+      const exprWithCountIf = replaceCountIfExpressions(expr)
+      const value = evalFormula(exprWithCountIf, tableData.value)
       if (tableData.value[targetRow - 1]) tableData.value[targetRow - 1][targetCol] = String(value)
       continue
     }
@@ -440,7 +689,7 @@ async function handleApply(cmd: string, id?: number) {
   try {
     const full = String(cmd || '')
     // find all APPLY_FORMULA tokens in order
-    const tokenRegex = /(\[APPLY_FORMULA:[^\]]+\])/ig
+    const tokenRegex = /(\[(?:APPLY_FORMULA|FILL_DOWN|SET_CELL|INSERT_ROW|INSERT_COLUMN|DELETE_ROW|DELETE_COLUMN):[^\]]+\])/ig
     const tokens = Array.from(full.matchAll(tokenRegex)).map(m => m[1])
 
     // helper: find nearest sentence containing token, fallback to full message
@@ -456,7 +705,7 @@ async function handleApply(cmd: string, id?: number) {
     if (tokens.length > 1) {
       // Output word/token pairs in order, then execute each — merge into original AI message when possible
       for (const tok of tokens) {
-        const inner = (tok.match(/\[APPLY_FORMULA:([^\]]+)\]/i) || [])[1] || tok
+        const inner = (tok.match(/\[(?:APPLY_FORMULA|FILL_DOWN|SET_CELL|INSERT_ROW|INSERT_COLUMN|DELETE_ROW|DELETE_COLUMN):([^\]]+)\]/i) || [])[1] || tok
         let word = findSentenceForToken(full, tok)
         // remove the bracketed token from displayed word to avoid re-parsing
         word = word.replace(tok, '').trim()
@@ -535,7 +784,7 @@ async function handleApplyToken(token: string, tokenKey: string, msgId?: number,
   if (!appliedIds.value.includes(tokenKey)) appliedIds.value.push(tokenKey)
   const origMsgId = typeof msgId === 'number' ? msgId : Number((tokenKey || '').split('-')[0])
   const origIdx = aiMessages.value.findIndex(x => x.id === origMsgId)
-  const inner = (token.match(/\[APPLY_FORMULA:([^\]]+)\]/i) || [])[1] || token
+  const inner = (token.match(/\[(?:APPLY_FORMULA|FILL_DOWN|SET_CELL|INSERT_ROW|INSERT_COLUMN|DELETE_ROW|DELETE_COLUMN):([^\]]+)\]/i) || [])[1] || token
 
   // helper to find sentence
   function findSentenceForToken(message: string, tokenStr: string) {

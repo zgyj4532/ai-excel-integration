@@ -94,13 +94,18 @@
             <p class="muted">{{ $t('autoReportDesc') }}</p>
             <div class="report-actions">
               <div class="report-buttons">
-                <button @click="onGenerateReportClick" class="generate-report-btn">{{ $t('generateReportBtn') }}</button>
+                <button
+                  @click="onGenerateReportClick"
+                  class="generate-report-btn"
+                  :disabled="reportGenerating || downloadInProgress"
+                >{{ reportGenerating ? '信息生成中...' : $t('generateReportBtn') }}</button>
                 <button @click="onLoadApiExample" class="generate-report-btn" style="margin-left:8px">{{ $t('loadApiExample') }}</button>
                 <button
                   v-if="reportGenerated"
                   @click="onDownloadReport"
                   class="generate-report-btn download-report-btn"
-                >下载报告</button>
+                  :disabled="reportGenerating || downloadInProgress"
+                >{{ downloadInProgress ? '下载中，请稍后' : '下载报告' }}</button>
               </div>
               <div class="report-options">
                 <span class="options-label">{{ $t('optionalAnalyses') }}</span>
@@ -172,18 +177,22 @@ import {
   analyzeFinancialRatios,
   analyzeProfitability,
   analyzeRfm,
-  getExcelDataPreview
+  getExcelDataPreview,
+  analyzeExcelData
 } from '@/services/aiService'
 
 const { t } = useI18n()
+const props = defineProps<{ savedFileId?: string | null; lastFile?: File | null }>()
 
 const reportGenerated = ref(false)
 const reportGenerating = ref(false)
+const downloadInProgress = ref(false)
 const reportHeight = ref(160)
 const reportMarkdown = ref('')
 // Chart creation state (use server-cached file)
 const savedFile = ref<File | null>(null)
 const savedFileId = ref<string | null>(null)
+const lastLoadedSavedFileId = ref<string | null>(null)
 const sheetHeaders = ref<string[]>([])
 const dataRange = ref('')
 const dataRangeInput = ref('')
@@ -260,28 +269,53 @@ function sliceByRange(matrix: any[][], r: { sc: number; sr: number; ec: number; 
   return rows.map(row => row.slice(r.sc, r.ec + 1))
 }
 
-// load latest saved file metadata and file bytes from backend
-async function loadLatestSavedFile() {
+// load latest saved file metadata and file bytes from backend (optionally by id)
+async function loadLatestSavedFile(preferId?: string | null) {
   try {
-    const resp = await fetch('/api/excel/saved-files')
-    if (!resp.ok) return
-    const j = await resp.json()
-    if (j && Array.isArray(j.files) && j.files.length > 0) {
-      // pick the last entry as the most recent
-      const last = j.files[j.files.length - 1]
-      if (last && last.fileId) {
-        savedFileId.value = last.fileId
-        // download file bytes
-        const dl = await fetch(`/api/excel/download?fileId=${encodeURIComponent(last.fileId)}`)
-        if (!dl.ok) return
-        const blob = await dl.blob()
-        // try to construct File with originalName if available
-        const filename = last.originalName || last.fileId || 'saved.xlsx'
-        const fileObj = new File([blob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-        savedFile.value = fileObj
-        await loadMatrixFromApi(fileObj)
+    let targetId: string | null = preferId || null
+    let targetName = ''
+
+    // try to get metadata so we can preserve original filename
+    const fetchMeta = async () => {
+      try {
+        const resp = await fetch('/api/excel/saved-files')
+        if (!resp.ok) return null
+        return await resp.json().catch(() => null)
+      } catch (e) {
+        return null
       }
     }
+
+    if (!targetId) {
+      const j = await fetchMeta()
+      if (j && Array.isArray(j.files) && j.files.length > 0) {
+        const last = j.files[j.files.length - 1]
+        if (last && last.fileId) {
+          targetId = last.fileId
+          targetName = last.originalName || ''
+        }
+      }
+    } else {
+      const j = await fetchMeta()
+      if (j && Array.isArray(j.files)) {
+        const found = j.files.find((f: any) => f && f.fileId === targetId)
+        if (found && found.originalName) targetName = found.originalName
+      }
+    }
+
+    if (!targetId) return
+    if (lastLoadedSavedFileId.value === targetId && savedFile.value) return
+
+    const dl = await fetch(`/api/excel/download?fileId=${encodeURIComponent(targetId)}`)
+    if (!dl.ok) return
+    const blob = await dl.blob()
+    const filename = targetName || targetId || 'saved.xlsx'
+    const fileObj = new File([blob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    savedFileId.value = targetId
+    savedFile.value = fileObj
+    lastLoadedSavedFileId.value = targetId
+    lastLoadedFileToken.value = `${fileObj.name}:${fileObj.size}`
+    await loadMatrixFromApi(fileObj)
   } catch (e) {
     // ignore
   }
@@ -525,19 +559,22 @@ function drawPie(canvas: HTMLCanvasElement, labels: string[], values: number[]) 
 }
 
 function extractSeries(matrix: any[][], targetColumn: string, range: { sc: number; sr: number; ec: number; er: number }) {
-  const sliced = sliceByRange(matrix, range)
-  if (sliced.length === 0) return { labels: [], values: [] }
-  const headerRow = sliced[0]
+  const headerRow = matrix[0] || []
   const targetIdx = headerRow.findIndex((h: any) => (h == null ? '' : String(h).trim()) === (targetColumn || '').trim())
   if (targetIdx <= 0) return { labels: [], values: [] }
+
   const labels: string[] = []
   const values: number[] = []
-  for (let i = 1; i < sliced.length; i++) {
-    const row = sliced[i]
-    const name = row[0]
+  // assume first column (within the selected range) is the name column
+  const nameColIdx = Math.max(range.sc, 0)
+
+  for (let r = range.sr; r <= range.er && r < matrix.length; r++) {
+    const row = matrix[r]
+    if (!row) continue
+    const name = row[nameColIdx] ?? row[0]
     const v = Number(row[targetIdx])
     if (!isFinite(v)) continue
-    labels.push(name == null ? t('itemLabel', { n: i }) : String(name))
+    labels.push(name == null ? t('itemLabel', { n: labels.length + 1 }) : String(name))
     values.push(v)
   }
   return { labels, values }
@@ -596,7 +633,23 @@ async function onCreateChart(chartType: string, targetColumn: string) {
 }
 
 onMounted(() => {
-  loadLatestSavedFile()
+  loadLatestSavedFile(props.savedFileId || null)
+})
+
+watch(() => props.lastFile, async (f) => {
+  if (!f) return
+  const token = `${f.name}:${f.size}`
+  lastLoadedFileToken.value = token
+  savedFile.value = f
+  savedFileId.value = null
+  lastLoadedSavedFileId.value = null
+  await loadMatrixFromApi(f)
+})
+
+watch(() => props.savedFileId, (id) => {
+  if (!id) return
+  if (id === lastLoadedSavedFileId.value) return
+  loadLatestSavedFile(id)
 })
 
 watch(savedFile, async (f) => {
@@ -626,89 +679,19 @@ async function onGenerateReportClick() {
   }
 
   reportGenerating.value = true
-  reportGenerated.value = true
+  reportGenerated.value = false
   reportMarkdown.value = '生成中...'
   const file = savedFile.value
   const sections: string[] = []
   let previewFinal = ''
-  const hasOptional = includeFinancialRatios.value || includeProfitability.value || includeCashFlow.value || includeBudgetActual.value || includeRfm.value || includeClv.value
 
   try {
-    // 基础：财务报表分析（必调）
-    try {
-      const res = await analyzeFinancial(file)
-      if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
-      sections.push(renderSectionMd(t('reportSectionFinancial'), (res as any)?.financialAnalysis || (res as any)?.analysis, undefined))
-    } catch (err) {
-      sections.push(renderErrorMd(t('reportSectionFinancial'), err))
-    }
-
-    // 选填：财务比率、盈利能力、现金流、预算对比、RFM、CLV
-    if (hasOptional) {
-      if (includeFinancialRatios.value) {
-        try {
-          const res = await analyzeFinancialRatios(file)
-          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
-          sections.push(renderSectionMd(t('reportSectionFinancialRatios'), (res as any)?.financialRatios, undefined))
-        } catch (err) {
-          sections.push(renderErrorMd(t('reportSectionFinancialRatios'), err))
-        }
-      }
-
-      if (includeProfitability.value) {
-        try {
-          const res = await analyzeProfitability(file)
-          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
-          sections.push(renderSectionMd(t('reportSectionProfitability'), (res as any)?.profitabilityAnalysis, undefined))
-        } catch (err) {
-          sections.push(renderErrorMd(t('reportSectionProfitability'), err))
-        }
-      }
-
-      if (includeCashFlow.value) {
-        try {
-          const res = await analyzeCashFlow(file)
-          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
-          sections.push(renderSectionMd(t('reportSectionCashFlow'), (res as any)?.cashFlowAnalysis, undefined))
-        } catch (err) {
-          sections.push(renderErrorMd(t('reportSectionCashFlow'), err))
-        }
-      }
-
-      if (includeBudgetActual.value) {
-        try {
-          const res = await analyzeBudgetActual(file)
-          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
-          sections.push(renderSectionMd(t('reportSectionBudgetActual'), (res as any)?.budgetActualAnalysis, undefined))
-        } catch (err) {
-          sections.push(renderErrorMd(t('reportSectionBudgetActual'), err))
-        }
-      }
-
-      if (includeRfm.value) {
-        try {
-          const res = await analyzeRfm(file)
-          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
-          sections.push(renderSectionMd(t('reportSectionRfm'), (res as any)?.rfmAnalysis, undefined))
-        } catch (err) {
-          sections.push(renderErrorMd(t('reportSectionRfm'), err))
-        }
-      }
-
-      if (includeClv.value) {
-        try {
-          const res = await analyzeClv(file)
-          if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
-          sections.push(renderSectionMd(t('reportSectionClv'), (res as any)?.clvAnalysis, undefined))
-        } catch (err) {
-          sections.push(renderErrorMd(t('reportSectionClv'), err))
-        }
-      }
-    }
-
-    if (previewFinal) {
-      sections.push(`**${t('reportPreviewTitle')}**\n\n\u0060\u0060\u0060\n${previewFinal}\n\u0060\u0060\u0060`)
-    }
+    // Use excel-analyze template (chapter 3.4 example) instead of financial report APIs
+    const analysisReq = '分析excel文件中内容'
+    const res = await analyzeExcelData(file, analysisReq)
+    if ((res as any)?.excelDataPreview) previewFinal = (res as any).excelDataPreview
+    const body = (res as any)?.analysis || (res as any)?.message || t('reportNoContent')
+    sections.push(renderSectionMd(t('template_excel_analyze_title'), body, previewFinal))
 
     reportMarkdown.value = sections.join('\n\n') || t('reportNoContent')
     reportGenerated.value = true
@@ -716,11 +699,10 @@ async function onGenerateReportClick() {
     // 等待 DOM 更新然后测量实际高度
     await nextTick()
     const el = document.querySelector('.auto-report-card .report-content') as HTMLElement | null
-    if (el) {
-      reportHeight.value = el.scrollHeight
-    } else {
-      reportHeight.value = 800
-    }
+    reportHeight.value = el ? el.scrollHeight : 800
+  } catch (err) {
+    reportMarkdown.value = renderErrorMd(t('template_excel_analyze_title'), err)
+    reportGenerated.value = true
   } finally {
     reportGenerating.value = false
   }
@@ -736,6 +718,7 @@ async function onDownloadReport() {
     alert(t('reportNoContent'))
     return
   }
+  downloadInProgress.value = true
   try {
     const card = document.querySelector('.auto-report-card') as HTMLElement | null
     const bgColor = '#19202C'
@@ -809,6 +792,8 @@ async function onDownloadReport() {
   } catch (err) {
     console.error('download report failed', err)
     alert(t('downloadFailed') || '下载失败')
+  } finally {
+    downloadInProgress.value = false
   }
 }
 

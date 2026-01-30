@@ -48,7 +48,7 @@ function escapeHtml(s: string) {
 
 function hasApply(s: string) {
   if (!s) return false
-  return /\[APPLY_FORMULA:[^\]]+\]/i.test(s)
+  return /(\[(APPLY_FORMULA|FILL_DOWN|SET_CELL|INSERT_ROW|INSERT_COLUMN|DELETE_ROW|DELETE_COLUMN):[^\]]+\])|(^|\n)(token:)?\s*[A-Z]+\d+\s*:/i.test(s)
 }
 
 function extractInner(s: string) {
@@ -62,24 +62,44 @@ function extractFull(s: string) {
 }
 
 function splitAllApply(s: string) {
-  const src = String(s || '')
+  const lines = String(s || '').split(/\n/)
   const parts: Array<any> = []
-  let rest = src
-  const re = /(\[APPLY_FORMULA:[^\]]+\])/i
-  while (rest && rest.length) {
-    const m = rest.match(re)
-    if (!m) {
-      if (rest.trim()) parts.push({ type: 'text', text: rest })
-      break
+  const bracketRe = /(\[(APPLY_FORMULA|FILL_DOWN|SET_CELL|INSERT_ROW|INSERT_COLUMN|DELETE_ROW|DELETE_COLUMN):[^\]]+\])/i
+  const colonRe = /^(?:token:\s*)?([A-Z]+\d+)\s*:\s*(.+)$/i
+
+  for (const ln of lines) {
+    const trimmed = ln.trim()
+    if (!trimmed) continue
+
+    // bracketed tokens
+    if (bracketRe.test(trimmed)) {
+      const matches = trimmed.match(new RegExp(bracketRe, 'gi')) || []
+      let cursor = trimmed
+      for (const tok of matches) {
+        const idx = cursor.indexOf(tok)
+        const prefix = cursor.slice(0, idx)
+        if (prefix && prefix.trim()) parts.push({ type: 'text', text: prefix })
+        const innerMatch = tok.match(/\[(APPLY_FORMULA|FILL_DOWN|SET_CELL|INSERT_ROW|INSERT_COLUMN|DELETE_ROW|DELETE_COLUMN):([^\]]+)\]/i)
+        const inner = innerMatch ? innerMatch[2] : tok
+        parts.push({ type: 'token', token: tok, inner })
+        cursor = cursor.slice(idx + tok.length)
+      }
+      if (cursor && cursor.trim()) parts.push({ type: 'text', text: cursor })
+      continue
     }
-    const token = m[1]
-    const idx = rest.indexOf(token)
-    const prefix = rest.slice(0, idx)
-    if (prefix && prefix.trim()) parts.push({ type: 'text', text: prefix })
-    const innerMatch = token.match(/\[APPLY_FORMULA:([^\]]+)\]/i)
-    const inner = innerMatch ? innerMatch[1] : token
-    parts.push({ type: 'token', token, inner })
-    rest = rest.slice(idx + token.length)
+
+    // colon pattern -> treat as APPLY_FORMULA token
+    const cm = trimmed.match(colonRe)
+    if (cm) {
+      const ref = cm[1]
+      const expr = cm[2]
+      const tok = `[APPLY_FORMULA:${ref}:${expr}]`
+      parts.push({ type: 'token', token: tok, inner: `${ref}: ${expr}` })
+      continue
+    }
+
+    // fallback plain text
+    parts.push({ type: 'text', text: trimmed })
   }
   return parts
 }
