@@ -9,8 +9,8 @@
                 <span class="new-chat-circle" aria-hidden="true">
                   <svg class="new-chat-plus" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img"
                     aria-hidden="true">
-                    <line x1="12" y1="5" x2="12" y2="19" stroke="#8505a8" stroke-width="2" stroke-linecap="round" />
-                    <line x1="5" y1="12" x2="19" y2="12" stroke="#8505a8" stroke-width="2" stroke-linecap="round" />
+                    <line x1="12" y1="5" x2="12" y2="19" stroke="#179078" stroke-width="2" stroke-linecap="round" />
+                    <line x1="5" y1="12" x2="19" y2="12" stroke="#179078" stroke-width="2" stroke-linecap="round" />
                   </svg>
                 </span>
                 <span class="new-chat-label">{{ t('newChat') }}</span>
@@ -885,7 +885,7 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
 }
 
 .tab-btn.active {
-  background: #8505a8;
+  background: #189079;
   /* workspace accent color */
   border-color: transparent;
   color: #fff;

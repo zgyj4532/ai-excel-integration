@@ -832,10 +832,19 @@ function onFinanceClick() {
 
 <style scoped>
 .analysis {
+  --bg-deep: #05070a;
+  --accent-gold: #c5a059;
+  --accent-teal: #19b394;
+  --text-primary: #e0e0e0;
+  --text-dim: rgba(224, 224, 224, 0.72);
+  --panel: rgba(255, 255, 255, 0.03);
+  --panel-strong: rgba(255, 255, 255, 0.08);
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 16px;
   height: 100%;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }
 
 .analysis > .topbar { grid-row: 1; }
@@ -855,21 +864,25 @@ function onFinanceClick() {
 }
 
 .chart-suggestion-item {
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
+  border: 1px solid var(--panel-strong);
+  border-radius: 10px;
   padding: 12px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  animation: slideUpReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .chart-placeholder {
   height: 120px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
+  background: rgba(8, 11, 18, 0.85);
+  border-radius: 6px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   margin-top: 0;
-  color: rgba(230, 238, 248, 0.6);
+  color: var(--text-dim);
   font-size: 14px;
+  border: 1px solid var(--panel-strong);
 }
 
 .chart-instructions {
@@ -885,17 +898,18 @@ function onFinanceClick() {
 }
 
 .range-input {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fff;
-  padding: 6px 8px;
-  border-radius: 4px;
+  background: rgba(8, 11, 18, 0.85);
+  border: 1px solid var(--panel-strong);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 8px;
   width: 140px;
+  font-family: 'IBM Plex Mono', 'Space Grotesk', monospace;
 }
 
 .range-hint {
   font-size: 12px;
-  color: rgba(230, 238, 248, 0.6);
+  color: var(--text-dim);
 }
 
 .range-error {
@@ -906,9 +920,9 @@ function onFinanceClick() {
 .chart-canvas {
   width: 100%;
   height: 220px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 4px;
+  background: rgba(8, 11, 18, 0.85);
+  border: 1px solid var(--panel-strong);
+  border-radius: 8px;
   margin-bottom: 6px;
 }
 
@@ -917,15 +931,30 @@ function onFinanceClick() {
 .rfm-btn,
 .clv-btn,
 .finance-btn {
-  background: #7c3aed;
-  color: white;
+  background: var(--accent-gold);
+  color: #0a0b0e;
   border: 0;
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
   cursor: pointer;
   margin-top: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 28px rgba(197, 160, 89, 0.26);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }
 .download-report-btn { margin-left: auto; white-space: nowrap; }
+
+.recommend-btn:hover,
+.generate-report-btn:hover,
+.rfm-btn:hover,
+.clv-btn:hover,
+.finance-btn:hover,
+.download-report-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
 
 /* Two-row layout */
 .row {
@@ -959,10 +988,15 @@ function onFinanceClick() {
 /* tighten card/header spacing to remove top gap */
 .card {
   padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-strong);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  animation: slideUpReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .card-header { padding: 8px 8px 4px 8px; }
-.card-header h4 { margin: 0; font-size: 16px; }
-.card-header .muted { margin-top: 4px; font-size: 12px; }
+.card-header h4 { margin: 0; font-size: 16px; font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-gold); }
+.card-header .muted { margin-top: 4px; font-size: 12px; color: var(--text-dim); }
 
 /* ensure card internals stack tightly */
 .chart-suggestion-item { padding: 8px; gap: 8px; justify-content: flex-start; }
@@ -970,18 +1004,21 @@ function onFinanceClick() {
 .row-second { grid-template-columns: 1fr; }
 .auto-report-card { min-height: 160px; }
 .auto-report-card .auto-report-body { transition: height 200ms ease; }
-.auto-report-card .report-placeholder { display:flex; align-items:center; justify-content:center; height:100%; color: rgba(230,238,248,0.9); }
-.auto-report-card .report-content { padding:12px; color: rgba(230,238,248,0.9); }
+.auto-report-card .report-placeholder { display:flex; align-items:center; justify-content:center; height:100%; color: var(--text-primary); }
+.auto-report-card .report-content { padding:12px; color: var(--text-primary); }
 .auto-report-card .report-content :deep(.markdown-body) {
-  color: rgba(230,238,248,0.9);
+  color: var(--text-primary);
   background: transparent;
+}
+.auto-report-card .report-content :deep(.inline-code-tag) {
+  color: transparent;
 }
 .auto-report-card .report-content :deep(.markdown-body p),
 .auto-report-card .report-content :deep(.markdown-body li),
 .auto-report-card .report-content :deep(.markdown-body span),
 .auto-report-card .report-content :deep(.markdown-body strong),
 .auto-report-card .report-content :deep(.markdown-body em) {
-  color: rgba(230,238,248,0.9);
+  color: var(--text-primary);
 }
 .auto-report-card .report-content :deep(.markdown-body h1),
 .auto-report-card .report-content :deep(.markdown-body h2),
@@ -989,16 +1026,16 @@ function onFinanceClick() {
 .auto-report-card .report-content :deep(.markdown-body h4),
 .auto-report-card .report-content :deep(.markdown-body h5),
 .auto-report-card .report-content :deep(.markdown-body h6) {
-  color: rgba(230,238,248,0.95);
+  color: var(--text-primary);
 }
 .auto-report-card .report-content :deep(.markdown-body a) {
-  color: #9ad4ff;
+  color: var(--accent-teal);
 }
 .auto-report-card .report-content :deep(.elx-xmarkdown-container),
 .auto-report-card .report-content :deep(.elx-xmarkdown-provider),
 .auto-report-card .report-content :deep(.elx-xmarkdown-container *),
 .auto-report-card .report-content :deep(.elx-xmarkdown-provider *) {
-  color: rgba(230,238,248,0.9);
+  color: var(--text-primary);
 }
 .auto-report-card .report-content :deep(pre),
 .auto-report-card .report-content :deep(code),
@@ -1006,7 +1043,7 @@ function onFinanceClick() {
 .auto-report-card .report-content :deep(.elx-highlight-code-wrapper *),
 .auto-report-card .report-content :deep(.shiki),
 .auto-report-card .report-content :deep(.shiki *) {
-  color: rgba(230,238,248,0.9);
+  color: var(--text-primary);
   background-color: rgba(255,255,255,0.02) !important;
 }
 .auto-report-card .report-content :deep(.pre-md),
@@ -1020,13 +1057,13 @@ function onFinanceClick() {
 .auto-report-card .report-content :deep(.el-scrollbar__view),
 .auto-report-card .report-content :deep(.code-lines) {
   background: rgba(255,255,255,0.02) !important;
-  color: rgba(230,238,248,0.9) !important;
-  border-color: rgba(255,255,255,0.06) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--panel-strong) !important;
 }
 .auto-report-card .report-content :deep(.code-lines .line-content),
 .auto-report-card .report-content :deep(.code-lines .line),
 .auto-report-card .report-content :deep(.code-lines .line span) {
-  color: rgba(230,238,248,0.9) !important;
+  color: var(--text-primary) !important;
 }
 .auto-report-card .report-content :deep(.el-scrollbar__bar) {
   background: transparent !important;
@@ -1049,7 +1086,7 @@ function onFinanceClick() {
 .auto-report-card .report-content :deep(.shiki .line),
 .auto-report-card .report-content :deep(.shiki .line span),
 .auto-report-card .report-content :deep(.shiki .line-content) {
-  color: rgba(230,238,248,0.9) !important;
+  color: var(--text-primary) !important;
 }
 .auto-report-card .report-content :deep(table),
 .auto-report-card .report-content :deep(thead),
@@ -1058,25 +1095,25 @@ function onFinanceClick() {
 .auto-report-card .report-content :deep(th),
 .auto-report-card .report-content :deep(td) {
   background: transparent !important;
-  color: rgba(230,238,248,0.9) !important;
-  border-color: rgba(255,255,255,0.06) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--panel-strong) !important;
 }
 .auto-report-card .report-content :deep(th) {
   font-weight: 700;
 }
-.auto-report-card.generated { /* extra visual emphasis when generated */ box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+.auto-report-card.generated { box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
 .report-actions { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
 .report-buttons { display:flex; gap:8px; flex-wrap:wrap; }
-.report-options { display:flex; gap:16px; flex-wrap:nowrap; align-items:center; font-size:12px; color: rgba(230,238,248,0.8); }
+.report-options { display:flex; gap:16px; flex-wrap:nowrap; align-items:center; font-size:12px; color: var(--text-dim); }
 .report-options label { display:flex; gap:6px; align-items:center; cursor:pointer; white-space:nowrap; }
-.report-options .options-label { font-weight:600; color: rgba(230,238,248,0.9); }
-.report-block { border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:12px; margin-bottom:12px; background: rgba(255,255,255,0.02); }
-.report-block h3 { margin:0 0 6px 0; font-size:16px; }
-.report-block p { margin:0 0 6px 0; line-height:1.5; }
+.report-options .options-label { font-weight:600; color: var(--text-primary); }
+.report-block { border:1px solid var(--panel-strong); border-radius:10px; padding:12px; margin-bottom:12px; background: var(--panel); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.report-block h3 { margin:0 0 6px 0; font-size:16px; font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-gold); }
+.report-block p { margin:0 0 6px 0; line-height:1.5; color: var(--text-primary); }
 .report-block.error { border-color: rgba(255,120,120,0.4); background: rgba(255,120,120,0.05); }
-.report-preview { margin-top:8px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:4px; }
-.report-preview-label { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12px; color: rgba(230,238,248,0.75); }
-.report-preview pre { margin:0; padding:8px; color: rgba(230,238,248,0.85); white-space:pre-wrap; word-break:break-all; }
+.report-preview { margin-top:8px; background: rgba(255,255,255,0.03); border:1px solid var(--panel-strong); border-radius:8px; }
+.report-preview-label { padding:6px 8px; border-bottom:1px solid var(--panel-strong); font-size:12px; color: var(--text-dim); }
+.report-preview pre { margin:0; padding:8px; color: var(--text-primary); white-space:pre-wrap; word-break:break-all; }
 
 .row-third {
   grid-template-columns: repeat(3, 1fr);
@@ -1091,5 +1128,10 @@ function onFinanceClick() {
   }
   .row-first .card { min-height: 280px; }
   .row-second .card { min-height: 140px; }
+}
+
+@keyframes slideUpReveal {
+  0% { transform: translateY(28px); opacity: 0; clip-path: inset(100% 0 0 0); }
+  100% { transform: translateY(0); opacity: 1; clip-path: inset(0 0 0 0); }
 }
 </style>

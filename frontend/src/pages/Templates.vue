@@ -323,22 +323,92 @@ onMounted(() => {
 
 <style scoped>
 .templates {
+  --bg-deep: #05070a;
+  --accent-gold: #c5a059;
+  --accent-teal: #19b394;
+  --text-primary: #e0e0e0;
+  --text-dim: rgba(224, 224, 224, 0.7);
+  --panel: rgba(255, 255, 255, 0.03);
+  --panel-strong: rgba(255, 255, 255, 0.06);
+  --grid-line: rgba(197, 160, 89, 0.12);
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 20% 20%, rgba(25, 179, 148, 0.1), transparent 32%),
+              radial-gradient(circle at 80% 60%, rgba(197, 160, 89, 0.08), transparent 38%),
+              linear-gradient(135deg, #06080d 0%, #0a0c11 50%, #05070a 100%);
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, -apple-system, sans-serif;
 }
 
-/* Ensure this page stacks rows vertically regardless of global .content */
+.templates::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(var(--grid-line) 1px, transparent 0);
+  background-size: 120px 120px;
+  opacity: 0.4;
+}
+
 .templates > .content {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.topbar h2 {
+  font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  animation: slideUpReveal 0.8s ease forwards;
+}
+
+.row {
+  position: relative;
+  z-index: 1;
 }
 
 .row-library .card {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--grid-line);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+  animation: slideUpReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(25, 179, 148, 0.05), transparent 55%);
+  pointer-events: none;
+}
+
+.card h4 {
+  font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 6px 0;
+  color: var(--accent-gold);
+}
+
+.muted {
+  color: var(--text-dim);
 }
 
 .library-header {
@@ -350,17 +420,25 @@ onMounted(() => {
 .library-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .library-card {
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 10px;
+  border: 1px solid var(--panel-strong);
+  border-radius: 12px;
   padding: 12px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  animation: slideUpReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
+}
+
+.library-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--accent-gold);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 .library-card-header {
@@ -369,23 +447,34 @@ onMounted(() => {
   gap: 4px;
 }
 
-.library-title { font-weight: 600; }
+.library-title {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
 
 .endpoint {
   font-size: 12px;
-  color: #8b5cf6;
+  color: var(--accent-teal);
   word-break: break-all;
 }
 
 .json-preview {
-  background: #0f172a;
-  color: #e2e8f0;
-  padding: 8px;
-  border-radius: 8px;
+  background: rgba(8, 11, 18, 0.85);
+  color: var(--text-primary);
+  padding: 10px;
+  border-radius: 10px;
   font-size: 12px;
   line-height: 1.5;
   max-height: 200px;
   overflow: auto;
+  border: 1px solid var(--panel-strong);
+  font-family: 'IBM Plex Mono', 'Space Grotesk', monospace;
+}
+
+.input-area {
+  resize: vertical;
 }
 
 .row-second {
@@ -393,7 +482,10 @@ onMounted(() => {
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
-.row-second .card { min-height: 160px; }
+
+.row-second .card {
+  min-height: 160px;
+}
 
 .row-example .card {
   display: flex;
@@ -416,19 +508,53 @@ onMounted(() => {
 .export-btn,
 .import-btn,
 .apply-btn {
-  background: #7c3aed;
-  color: white;
+  background: var(--accent-gold);
+  color: #0a0b0e;
   border: 0;
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
   cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 28px rgba(197, 160, 89, 0.26);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }
 
 .apply-template-btn {
-  background: #10b981;
+  background: var(--accent-teal);
+  box-shadow: 0 10px 28px rgba(25, 179, 148, 0.28);
+}
+
+.apply-template-btn:hover,
+.export-btn:hover,
+.import-btn:hover,
+.apply-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
+.apply-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .template-actions.compact {
   justify-content: flex-start;
+}
+
+@keyframes slideUpReveal {
+  0% {
+    transform: translateY(28px);
+    opacity: 0;
+    clip-path: inset(100% 0 0 0);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
 }
 </style>

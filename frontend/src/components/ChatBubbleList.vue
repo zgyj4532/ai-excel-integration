@@ -133,6 +133,6 @@ function splitAllApply(s: string) {
 .apply-text { text-align:center; font-weight:600; padding:8px 12px; border-radius:8px; background: rgba(255,255,255,0.02); }
 .apply-text.applied { opacity:0.9; background: rgba(255,255,255,0.01); }
 .apply-actions { display:flex; gap:8px }
-.btn-execute { background: linear-gradient(90deg,#8a2be2,#6d04c4); color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer }
+.btn-execute { background: linear-gradient(90deg,#178C76,#178C83); color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer }
 .btn-skip { background: #6b7280; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer }
 </style>

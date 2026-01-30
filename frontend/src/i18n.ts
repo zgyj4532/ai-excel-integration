@@ -230,7 +230,7 @@ const messages = {
     clvClicked: '已点击 CLV 入口',
     financeClicked: '已点击财务分析入口',
     importFailed: '导入失败',
-    prototype: 'Prototype · 线框验证',
+    prototype: 'Insight · Cloud',
     switchLang: '切换语言',
     newChat: '新对话',
     
@@ -510,7 +510,7 @@ const messages = {
     financeClicked: 'Finance analysis entry clicked',
     importFailed: 'Import failed',
 
-    prototype: 'Prototype · Wireframe',
+    prototype: 'Insight · Cloud',
     switchLang: 'Switch language',
     newChat: 'New Chat',
     

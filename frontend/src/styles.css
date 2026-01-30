@@ -1,12 +1,19 @@
 * { box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:#0f1724; color:#e6eef8 }
-.app { display:flex; height:100vh; }
-.sidebar { width:64px; background:linear-gradient(180deg,#1f2937,#111827); padding:12px 8px; display:flex; flex-direction:column; transition: width .22s ease, padding .18s ease }
-.sidebar:hover { width:200px; padding:16px }
-.nav-link { color:inherit; text-decoration:none; padding:8px; border-radius:6px; display:flex; gap:8px; align-items:center; overflow:hidden; transition:justify-content .18s ease, padding .18s ease }
+body {
+	font-family: 'Space Grotesk', 'IBM Plex Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+	margin: 0;
+	background: radial-gradient(circle at 18% 22%, rgba(25, 179, 148, 0.08), transparent 34%),
+							radial-gradient(circle at 78% 72%, rgba(197, 160, 89, 0.08), transparent 38%),
+							linear-gradient(135deg, #06080d 0%, #0a0c11 50%, #05070a 100%);
+	color: #e0e0e0;
+}
+.app { display:flex; min-height:100vh; gap:12px; padding:12px; }
+.sidebar { width:64px; background:rgba(255,255,255,0.03); border:1px solid rgba(197,160,89,0.18); border-radius:14px; padding:12px 8px; display:flex; flex-direction:column; transition: width .22s ease, padding .18s ease, box-shadow .2s ease, border-color .2s ease; box-shadow: 0 16px 44px rgba(0,0,0,0.4); }
+.sidebar:hover { width:200px; padding:16px; box-shadow: 0 20px 54px rgba(0,0,0,0.45); }
+.nav-link { color:rgba(224,224,224,0.9); text-decoration:none; padding:8px; border-radius:12px; display:flex; gap:8px; align-items:center; overflow:hidden; transition:justify-content .18s ease, padding .18s ease, background .2s ease, border-color .2s ease, color .2s ease, transform .18s ease; border:1px solid transparent; }
 .nav-link svg { opacity:0.95; width:16px; height:16px; flex:0 0 16px }
 .nav-link span { font-size:14px; display:inline-block; white-space:nowrap; overflow:hidden; max-width:0; opacity:0; margin-left:0; transition: max-width .22s ease, opacity .18s linear, margin-left .18s }
-.nav-link:hover { background:rgba(255,255,255,0.02); }
+.nav-link:hover { background:rgba(197,160,89,0.08); border-color:rgba(197,160,89,0.28); color:#e0e0e0; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
 
 /* collapsed behavior: center icons and hide labels */
 .sidebar:not(:hover) .nav-link { justify-content:center; padding:10px 6px }
@@ -15,16 +22,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 /* expanded behavior: show labels and left-align items */
 .sidebar:hover .nav-link { justify-content:flex-start; padding:8px 12px }
 .sidebar:hover .nav-link span { max-width:160px; opacity:1; margin-left:8px }
-.nav-link.router-link-active { background:linear-gradient(90deg, rgba(124,58,237,0.16), rgba(56,189,248,0.06)); box-shadow: inset 3px 0 0 0 rgba(124,58,237,0.6); }
+.nav-link.router-link-active { background:linear-gradient(90deg, rgba(197,160,89,0.18), rgba(25,179,148,0.12)); box-shadow: inset 3px 0 0 0 rgba(197,160,89,0.7); border-color: rgba(197,160,89,0.36); }
 .main { flex:1; display:flex; flex-direction:column }
-.topbar { padding:12px 16px; background:rgba(255,255,255,0.03); display:flex; gap:12px; align-items:center }
-.topbar { padding:16px; background:rgba(255,255,255,0.03); display:flex; gap:12px; align-items:center }
+.topbar { padding:16px; background:rgba(255,255,255,0.03); display:flex; gap:12px; align-items:center; border:1px solid rgba(197,160,89,0.12); border-radius:12px; box-shadow: 0 12px 32px rgba(0,0,0,0.32); }
 .content { display:flex; flex:1; gap:12px; padding:12px }
-.preview { flex:1; background:rgba(255,255,255,0.02); border-radius:6px; padding:0; overflow:auto; min-height:90vh }
+.preview { flex:1; background:rgba(255,255,255,0.02); border-radius:10px; padding:0; overflow:auto; min-height:90vh; border:1px solid rgba(197,160,89,0.12); box-shadow: 0 12px 32px rgba(0,0,0,0.35); }
 .right { width:360px; display:flex; flex-direction:column; gap:12px }
-.card { background:rgba(255,255,255,0.02); border-radius:6px; padding:12px }
-button { background:#7c3aed; color:white; border:0; padding:8px 10px; border-radius:6px }
-input, textarea { width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit }
+.card { background:rgba(255,255,255,0.02); border-radius:10px; padding:12px; border:1px solid rgba(197,160,89,0.12); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+button { background: linear-gradient(135deg, rgba(197, 160, 89, 0.9)); color:#05070a; border:0; padding:8px 10px; border-radius:10px; box-shadow: 0 10px 26px rgba(0,0,0,0.25); }
+input, textarea { width:100%; padding:8px; border-radius:8px; border:1px solid rgba(197,160,89,0.18); background:rgba(8,11,18,0.85); color:inherit }
 table { width:100%; border-collapse:collapse }
 td, th { padding:6px; border-bottom:1px solid rgba(255,255,255,0.03); font-size:13px }
 .muted { color:rgba(230,238,248,0.6); font-size:13px }
@@ -42,8 +48,8 @@ td, th { padding:6px; border-bottom:1px solid rgba(255,255,255,0.03); font-size:
 	white-space: nowrap;
 }
 
-.lang-btn { background:transparent; color:inherit; border:1px solid rgba(255,255,255,0.06); padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; transition: opacity .18s ease }
-.lang-btn.active { background:rgba(255,255,255,0.06); box-shadow: inset 0 -2px 0 rgba(124,58,237,0.6) }
+.lang-btn { background:transparent; color:inherit; border:1px solid rgba(197,160,89,0.26); padding:4px 8px; border-radius:8px; cursor:pointer; font-size:12px; transition: opacity .18s ease, background .2s ease, border-color .2s ease, color .2s ease }
+.lang-btn.active { background:linear-gradient(135deg, rgba(197,160,89,0.82)); box-shadow: inset 0 -2px 0 rgba(197,160,89,0.5); color:#05070a; border-color: rgba(197,160,89,0.6) }
 
 /* bottom muted text and language buttons hidden when collapsed */
 .sidebar:not(:hover) .muted { opacity:0 }
@@ -54,13 +60,13 @@ td, th { padding:6px; border-bottom:1px solid rgba(255,255,255,0.03); font-size:
 /* small circular icon button used in topbar */
 .icon-btn { width:34px; height:34px; padding:0; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; border:0; background:rgba(255,255,255,0.02); color:inherit; cursor:pointer }
 .icon-btn i { font-size:14px }
-.icon-btn:hover { background: linear-gradient(90deg, rgba(124,58,237,0.16), rgba(56,189,248,0.06)); box-shadow: 0 6px 18px rgba(0,0,0,0.25) }
+.icon-btn:hover { background: linear-gradient(90deg, rgba(197,160,89,0.18), rgba(25,179,148,0.12)); box-shadow: 0 6px 18px rgba(0,0,0,0.25) }
 
 /* File uploader and workspace panel styles */
 .card-header { font-weight:600; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.02); display:flex; align-items:center; gap:8px }
 .workspace-panel .card { padding:0; overflow:visible }
 .file-upload-area { border:1px dashed rgba(255,255,255,0.06); border-radius:8px; padding:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); transition:all .18s ease }
-.file-upload-area i.bi { font-size:32px; color:rgba(124,58,237,0.9) }
+.file-upload-area i.bi { font-size:32px; color:rgba(197,160,89,0.9) }
 .file-upload-area h5 { margin:0; font-size:16px; color:inherit }
 .cloud-icon { color:rgba(51, 95, 237, 0.92); }
 .file-upload-area .btn.btn-primary {
@@ -70,7 +76,7 @@ td, th { padding:6px; border-bottom:1px solid rgba(255,255,255,0.03); font-size:
 	display:inline-flex;
 	align-items:center;
 	gap:8px;
-	box-shadow: 0 10px 28px rgba(124,58,237,0.16);
+	box-shadow: 0 10px 28px rgba(197,160,89,0.2);
 	min-width:140px;
 }
 
@@ -84,7 +90,7 @@ td, th { padding:6px; border-bottom:1px solid rgba(255,255,255,0.03); font-size:
 /* small column remove icon in table headers */
 table thead th { position: relative }
 .col-remove { position: absolute; top:6px; right:6px; width:16px; height:16px; line-height:14px; padding:0; border-radius:8px; border:0; background:rgba(255,255,255,0.03); color:rgba(230,238,248,0.9); font-size:12px; cursor:pointer }
-.col-remove:hover { background: linear-gradient(90deg, rgba(124,58,237,0.16), rgba(56,189,248,0.06)); color:white }
+.col-remove:hover { background: linear-gradient(90deg, rgba(197,160,89,0.18), rgba(25,179,148,0.12)); color:white }
 
 #fileList { border-top:1px solid rgba(255,255,255,0.02); padding-top:8px }
 .file-item { display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-radius:6px }
@@ -97,7 +103,7 @@ table thead th { position: relative }
 .mt-3 { margin-top:12px }
 .me-2 { margin-right:8px }
 .btn-sm { padding:6px 8px; font-size:13px }
-.btn-outline-primary { background:transparent; border:1px solid rgba(124,58,237,0.18); color:inherit }
+.btn-outline-primary { background:transparent; border:1px solid rgba(197,160,89,0.24); color:inherit }
 
 /* AI stream container: taller and themed scrollbar */
 .ai-stream-container { height: 700px; overflow:auto; padding-right:6px }
@@ -105,7 +111,7 @@ table thead th { position: relative }
 /* WebKit scrollbars */
 .ai-stream-container::-webkit-scrollbar { width: 10px; background: transparent }
 .ai-stream-container::-webkit-scrollbar-track { background: transparent }
-.ai-stream-container::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(124,58,237,0.9), rgba(56,189,248,0.9)); border-radius: 10px }
+.ai-stream-container::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(197,160,89,0.85), rgba(25,179,148,0.75)); border-radius: 10px }
 .ai-stream-container::-webkit-scrollbar-thumb:hover { filter: brightness(0.9) }
 
 /* Firefox */
@@ -118,8 +124,8 @@ table thead th { position: relative }
 .preview { scrollbar-color: rgba(255, 255, 255, 0.9) transparent; scrollbar-width: thin }
 .preview::-webkit-scrollbar { width: 10px; background: transparent }
 .preview::-webkit-scrollbar-track { background: transparent }
-.preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(124,58,237,0.9), rgba(56,189,248,0.9)); border-radius: 10px }
-.preview::-webkit-scrollbar-thumb:hover { filter: brightness(0.9) }
+.preview::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(197,160,89,0.85), rgba(25,179,148,0.75)); border-radius: 10px }
+.preview::-webkit-scrollbar-thumb:hover { filter: brightness(1); }
 
 /* Floating AI input at bottom-right */
 .right { position: relative }
@@ -128,11 +134,11 @@ table thead th { position: relative }
 .floating-ai-input textarea { min-height:64px }
 
 /* Pill-style new chat button (circle icon + label) */
-.new-chat-btn { display:inline-flex; align-items:center; gap:12px; padding:8px 12px; min-height:28px; border-radius:20px; background: linear-gradient(180deg,#4f26b7,#8505a8); color:#fff; border:1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(8,120,80,0.18); font-weight:500; font-size:15px; cursor:pointer; transition:transform .12s ease, box-shadow .12s ease }
-.new-chat-btn:hover { transform:translateY(-2px); box-shadow: 0 18px 44px rgba(8,120,80,0.24) }
-.new-chat-circle { width:24px; height:24px; border-radius:50%; background:#fff; display:inline-flex; align-items:center; justify-content:center; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06); border:1px solid rgba(15,164,106,0.06) }
-.new-chat-circle i { color:#8505a8; font-size:18px }
-.new-chat-label { color:#fff; font-size:16px; padding-right:6px }
+.new-chat-btn { display:inline-flex; align-items:center; gap:12px; padding:8px 12px; min-height:28px; border-radius:20px; background: linear-gradient(180deg, rgba(25,179,148,0.78)); color:#05070a; border:1px solid rgba(197,160,89,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.24); font-weight:600; font-size:15px; cursor:pointer; transition:transform .12s ease, box-shadow .12s ease }
+.new-chat-btn:hover { transform:translateY(-2px); box-shadow: 0 18px 44px rgba(0,0,0,0.32) }
+.new-chat-circle { width:24px; height:24px; border-radius:50%; background:#fff; display:inline-flex; align-items:center; justify-content:center; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06); border:1px solid rgba(197,160,89,0.18) }
+.new-chat-circle i { color:#0a0c11; font-size:18px }
+.new-chat-label { color:#0a0c11; font-size:16px; padding-right:6px }
 
 /* Unified section titles: match Data Preview's heading appearance */
 .preview h4, .preview h2, .card h4, .card h2 {
