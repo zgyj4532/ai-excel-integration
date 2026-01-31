@@ -23,7 +23,7 @@
               <button class="btn" @click="retryLastCommand" v-if="failedCommand">{{ t('retry') || '重试' }}</button>
             </div>
           </div>
-      <section class="preview card" style="flex:1; min-width:0; max-height:calc((100vh - 200px)); overflow:auto;">
+      <section class="preview card" style="flex:1; min-width:0; height:100%; overflow:auto;">
         <div
           style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.03)">
           <div style="display:flex; gap:8px">
@@ -53,7 +53,7 @@
           </div>
         </div>
       </section>
-      <aside class="right" style="width:420px;height:840px; display:flex; flex-direction:column; gap:12px;">
+      <aside class="right" style="width:420px; display:flex; flex-direction:column; gap:12px; height:100%;">
         <div class="card" style="display:flex; flex-direction:column; gap:12px;">
           <!-- Chat box: uploader (hidden after run), AI stream + steps (shown after run), and command input -->
           <div class="chat-box" style="display:flex; flex-direction:column; gap:8px;">
@@ -858,6 +858,11 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
   grid-template-rows: auto 1fr;
   gap: 12px;
   align-items: start;
+  height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .workspace-grid>.topbar {
@@ -868,11 +873,30 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
 .workspace-grid>.preview {
   grid-column: 1 / 2;
   grid-row: 2;
+  height: 100%;
+  min-height: 0;
 }
 
 .workspace-grid>.right {
   grid-column: 2 / 3;
   grid-row: 1 / 3;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workspace-grid>.right .card {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-grid>.right .chat-box {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .tab-btn {

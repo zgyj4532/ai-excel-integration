@@ -4,7 +4,8 @@ const messages = {
   zh: {
     appName: '慧拓云',
     landing: '首页',
-    landingTitle: '慧拓云企业级AI智能数据处理与分析系统',
+    landingTitle: '慧拓云企业级AI',
+    landingTitle1:'智能数据处理与分析系统',
     landingSubtitle: '用智慧拓展数据的边界',
     landingGoWorkspace: '进入 Workspace',
     landingOpenDemo: '观看功能演示',
@@ -283,7 +284,8 @@ const messages = {
   en: {
     appName: 'InsightCloud',
     landing: 'Landing',
-    landingTitle: 'InsightCloud Enterprise AI-driven Data Processing and Analysis System',
+    landingTitle: 'InsightCloud Enterprise AI-driven ',
+    landingTitle1:'Intelligent Data Processing and Analysis System',
     landingSubtitle: 'Expand the boundaries of data with intelligence',
     landingGoWorkspace: 'Go to Workspace',
     landingOpenDemo: 'Watch demo',

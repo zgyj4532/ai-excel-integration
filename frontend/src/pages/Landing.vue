@@ -8,6 +8,7 @@
       <div class="hero-text">
         <p class="eyebrow">{{ $t('prototype') }}</p>
         <h1 class="headline">{{ $t('landingTitle') }}</h1>
+        <h1 class="headline">{{ $t('landingTitle1') }}</h1>
         <p class="subline">{{ $t('landingSubtitle') }}</p>
         <div class="divider"></div>
         <div class="cta-row">
