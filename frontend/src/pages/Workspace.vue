@@ -23,7 +23,7 @@
               <button class="btn" @click="retryLastCommand" v-if="failedCommand">{{ t('retry') || '重试' }}</button>
             </div>
           </div>
-      <section class="preview card" style="flex:1; min-width:0; height:100%; overflow:auto;">
+      <section class="preview card" style="flex:1; min-width:0; height:100%;">
         <div
           style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.03)">
           <div style="display:flex; gap:8px">
@@ -34,14 +34,32 @@
             <button :class="['tab-btn', activeTab === 'templates' ? 'active' : '']" @click="activeTab = 'templates'">{{
               $t('templates') }}</button>
           </div>
-          <div style="margin-left:auto; font-size:13px" class="muted">{{ $t('currentFile') }} {{ fileName ||
-            $t('noFile') }}</div>
+          <button
+            class="save-btn"
+            :disabled="!hasFile || saving"
+            @click="handleSaveClick"
+            :title="$t('saveFile')"
+            :aria-label="$t('saveFile')"
+          >
+            <svg class="save-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M6 3h11l3 3v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M14 3v5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M15 17H9m0-3h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span>{{ saving ? $t('saving') : $t('saveFile') }}</span>
+          </button>
         </div>
 
         <div style="padding:16px">
+          <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
           <div v-show="activeTab === 'overview'">
             <h4 style="margin-top:0">{{ $t('dataPreview') }}</h4>
-            <DataTable :data="tableData" @updateCell="onUpdateCell" @updateData="onUpdateData" :showExport="true" @export="onExport" />
+            <div v-if="hasFile" class="univer-wrapper">
+              <UniverTable @ready="handleUniverReady" />
+            </div>
+            <div v-else class="empty-upload">
+              <div class="empty-upload-text">{{ $t('workspaceNoUploadTip') }}</div>
+            </div>
           </div>
 
           <div v-show="activeTab === 'analysis'">
@@ -55,22 +73,17 @@
       </section>
       <aside class="right" style="width:420px; display:flex; flex-direction:column; gap:12px; height:100%;">
         <div class="card" style="display:flex; flex-direction:column; gap:12px;">
-          <!-- Chat box: uploader (hidden after run), AI stream + steps (shown after run), and command input -->
+          <div v-if="showUploader" style="display:flex; flex-direction:column; gap:12px;">
+            <FileUploader :snapshotOps="snapshotOps" @fileLoaded="onFileLoaded" />
+          </div>
+          <!-- Chat box: AI stream + steps (shown after run) -->
           <div class="chat-box" style="display:flex; flex-direction:column; gap:8px;">
-            <!-- Uploader: hidden when aiActive -->
-            <div v-if="!aiActive">
-              <FileUploader @fileLoaded="onFileLoaded" />
-            </div>
-
-            <!-- AI Stream and Steps: shown when aiActive -->
             <div v-if="aiActive" style="display:flex; flex-direction:column; gap:8px;">
                 <div class="ai-stream-container">
-                  <ChatBubbleList :messages="aiMessages" :executingIds="executingIds" :appliedIds="appliedIds" @apply-token="handleApplyToken" @skip-token="handleSkipToken" />
+                  <ChatBubbleList :messages="aiMessages" :executingIds="executingIds" :appliedIds="appliedIds" :snapshot-ops="snapshotOps" @apply-token="handleApplyToken" @skip-token="handleSkipToken" />
                 </div>
               <!-- steps are included inside aiMessages as a single card message -->
             </div>
-
-            <!-- Command input removed from chat box; moved to floating input at bottom-right -->
           </div>
         </div>
         <!-- Floating AI command input (aligned inside right sidebar) -->
@@ -79,20 +92,24 @@
         </div>
       </aside>
     </div>
+    <!-- Export Modal -->
+    <FileDownloader :snapshotOps="snapshotOps" :isOpen="showExportModal" @close="showExportModal = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, shallowRef, onMounted, watch, computed } from 'vue'
+import { CalculationMode } from '@univerjs/preset-sheets-core'
 import * as XLSX from 'xlsx'
 import { useI18n } from 'vue-i18n'
 import FileUploader from '../components/FileUploader.vue'
-import DataTable from '../components/DataTable.vue'
+import FileDownloader from '../components/FileDownloader.vue'
+import UniverTable from '../components/UniverTable.vue'
 import ChatBubbleList from '../components/ChatBubbleList.vue'
 import ChatInput from '../components/ChatInput.vue'
 import Analysis from './Analysis.vue'
 import Templates from './Templates.vue'
-import { getExcelDataPreview, processExcelWithAI, processExcelAndChat, uploadExcel, processExcelWithAIDownload, chat, runAllApis } from '../services/aiService'
+import { getExcelDataPreview, processExcelWithAI, processExcelAndChat, uploadExcel, chat, runAllApis } from '../services/aiService'
 import { handleUserChat } from '../services/chatManager'
 
 const fileName = ref('')
@@ -114,6 +131,97 @@ const autoSaveEnabled = ref(true)
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 let autosaveTimer: number | null = null
 const lastSavedFileId = ref<string | null>(null)
+const showExportModal = ref(false)
+const showUploader = ref(true)
+const makeId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`
+const hasFile = computed(() => !!fileName.value)
+const saving = ref(false)
+const saveMessage = ref('')
+
+type SnapshotOps = {
+  createWorkbook?: (snapshot?: any) => any
+  getActiveWorkbook?: () => any
+  getFormulaEngine?: () => any
+}
+
+const snapshotOps = shallowRef<SnapshotOps | null>(null)
+
+function handleUniverReady(payload: { univerAPI: any }) {
+  const api = payload?.univerAPI || {}
+  snapshotOps.value = {
+    createWorkbook: typeof api.createWorkbook === 'function' ? api.createWorkbook.bind(api) : undefined,
+    getActiveWorkbook: typeof api.getActiveWorkbook === 'function' ? api.getActiveWorkbook.bind(api) : undefined,
+    getFormulaEngine: typeof api.getFormula === 'function' ? () => api.getFormula() : undefined,
+  }
+  renderTableToUniver()
+}
+
+function tableToSnapshot(data: string[][], workbookId?: string) {
+  const rows = Math.max(data.length, 1)
+  const cols = Math.max(data.reduce((m, r) => Math.max(m, r ? r.length : 0), 0), 1)
+  const cellData: Record<string, Record<string, { v: any }>> = {}
+
+  data.forEach((row, rIdx) => {
+    if (!row) return
+    row.forEach((val, cIdx) => {
+      if (val === undefined || val === null || String(val).trim() === '') return
+      const rowKey = String(rIdx)
+      if (!cellData[rowKey]) cellData[rowKey] = {}
+      cellData[rowKey][String(cIdx)] = { v: val }
+    })
+  })
+
+  const sheetId = 'sheet-1'
+  return {
+    id: workbookId || makeId('workbook-preview'),
+    name: fileName.value || 'Sheet1',
+    sheetOrder: [sheetId],
+    sheets: {
+      [sheetId]: {
+        id: sheetId,
+        name: 'Sheet1',
+        rowCount: rows,
+        columnCount: cols,
+        cellData,
+      },
+    },
+  }
+}
+
+function renderTableToUniver() {
+  const ops = snapshotOps.value
+  if (!ops || typeof ops.createWorkbook !== 'function') return
+  if (!fileName.value) return
+  try {
+    const data = tableData.value && tableData.value.length ? tableData.value : [['']]
+    const snapshot = tableToSnapshot(data, makeId('workbook-preview'))
+    ops.createWorkbook(snapshot)
+    const engine = ops.getFormulaEngine?.()
+    engine?.executeCalculation?.()
+  } catch (e) {
+    console.warn('renderTableToUniver failed', e)
+    const msg = (e as Error)?.message || ''
+    if (msg.toLowerCase().includes('disposed')) {
+      snapshotOps.value = null
+    }
+  }
+}
+
+async function handleSaveClick() {
+  if (!hasFile.value || saving.value) return
+  saving.value = true
+  saveMessage.value = ''
+  try {
+    await saveTableAsExcel()
+    saveMessage.value = t('saveSuccess')
+  } catch (e:any) {
+    const msg = (e && e.message) || e || ''
+    saveMessage.value = t('saveFailed', { reason: msg })
+  } finally {
+    saving.value = false
+    window.setTimeout(() => { saveMessage.value = '' }, 3000)
+  }
+}
 
 function onTemplateResponse(text: string) {
   aiActive.value = true
@@ -179,12 +287,14 @@ async function onFileLoaded(payload: { name: string; data: string[][]; file?: Fi
   } else {
     lastFile.value = null
   }
+  renderTableToUniver()
   saveToStorage()
 }
 
 async function onRunCommand(command: string) {
   // activate AI chat view
   aiActive.value = true
+  showUploader.value = false
   lastError.value = null
   failedCommand.value = null
   lastCommand.value = command
@@ -211,7 +321,10 @@ async function onRunCommand(command: string) {
   }
 
   function setTablePreview(data: string[][]) {
-    try { tableData.value = data } catch (e) { /* ignore */ }
+    try {
+      tableData.value = data
+      renderTableToUniver()
+    } catch (e) { /* ignore */ }
   }
 
   try {
@@ -230,30 +343,6 @@ async function onRunCommand(command: string) {
   }
 }
 
-async function onExport() {
-  if (!lastFile.value || !lastCommand.value) {
-    alert(t('exportGuard'))
-    return
-  }
-  try {
-    const blob = await processExcelWithAIDownload(lastFile.value, lastCommand.value, lastSavedFileId.value || undefined)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const name = fileName.value ? `modified_${fileName.value}` : 'modified.xlsx'
-    a.download = name
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  } catch (e:any) {
-    const msg = (e && (e.body?.error || e.message)) || t('exportFailed')
-    lastError.value = msg
-    failedCommand.value = lastCommand.value
-    alert(msg)
-  }
-}
-
 function retryLastCommand(){
   if (failedCommand.value) onRunCommand(failedCommand.value)
 }
@@ -266,6 +355,8 @@ function newChat() {
   fileName.value = ''
   tableData.value = []
   saveToStorage()
+  showUploader.value = true
+  snapshotOps.value = null
   // record this new chat in history as an empty session marker
   chatHistory.value.push({ id: Date.now(), command: '', timestamp: Date.now(), messages: [] })
 }
@@ -295,10 +386,11 @@ function onIgnoreCommand(m: any) {
 function onUpdateCell({ r, c, value }: { r: number, c: number, value: string }) {
   if (!tableData.value[r]) return
   tableData.value[r][c] = value
+  renderTableToUniver()
   saveToStorage()
 }
 
-function onUpdateData(newData: string[][]) { tableData.value = newData; saveToStorage() }
+function onUpdateData(newData: string[][]) { tableData.value = newData; renderTableToUniver(); saveToStorage() }
 
 function saveToStorage() {
   try {
@@ -310,8 +402,27 @@ function saveToStorage() {
 // Watch table changes to trigger local storage save and debounced server autosave
 watch(tableData, () => {
   saveToStorage()
+  renderTableToUniver()
   if (autoSaveEnabled.value) scheduleAutoSave()
 }, { deep: true })
+
+watch(
+  () => aiMessages.value.length,
+  (len) => {
+    if (len > 0) {
+      showUploader.value = false
+    }
+  }
+)
+
+watch(
+  () => hasFile.value,
+  (val) => {
+    if (!val) {
+      snapshotOps.value = null
+    }
+  }
+)
 
 async function saveTableAsExcel() {
   // Create workbook and upload to backend storage without triggering a local download
@@ -347,7 +458,7 @@ function loadFromStorage() {
   } catch (e) { }
 }
 
-onMounted(() => loadFromStorage())
+onMounted(() => { loadFromStorage(); renderTableToUniver() })
 
 function colLetterToIndex(letters: string) { let n = 0; for (let i = 0; i < letters.length; i++) { n = n * 26 + (letters.charCodeAt(i) - 64) } return n - 1 }
 function colIndexToLetter(idx: number) { let n = idx + 1; let s = ''; while (n > 0) { const rem = (n - 1) % 26; s = String.fromCharCode(65 + rem) + s; n = Math.floor((n - 1) / 26) } return s }
@@ -676,6 +787,7 @@ function applyCommands(raw: string) {
       continue
     }
   }
+  renderTableToUniver()
   saveToStorage()
 }
 
@@ -915,11 +1027,99 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
   color: #fff;
 }
 
+.tab-btn:hover {
+  filter: brightness(1.05);
+}
+
+.save-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(197,160,89,0.32);
+  background: linear-gradient(135deg, rgba(25,179,148,0.12), rgba(197,160,89,0.12));
+  color: #e0e0e0;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.32);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  border-color: rgba(197,160,89,0.52);
+  background: linear-gradient(135deg, rgba(197,160,89,0.16), rgba(25,179,148,0.18));
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.save-message {
+  margin-bottom: 8px;
+  color: #d9ead3;
+  font-size: 13px;
+}
+
+.empty-upload {
+  height: 610px;
+  border: 1px dashed rgba(197,160,89,0.32);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.02);
+  color: #e0e0e0;
+  text-align: center;
+}
+
+.empty-upload-text {
+  max-width: 420px;
+  line-height: 1.6;
+  font-size: 24px;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.export-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.export-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .workspace-tabs {
   border-bottom: 1px solid #eee
 }
 
-.tab-btn:hover {
-  filter: brightness(1.05);
+.univer-wrapper {
+  height: 610px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
 }
 </style>

@@ -96,6 +96,8 @@ type StandardTemplate = {
 
 const instructionInputs = ref<Record<number, string>>({})
 const applyingId = ref<number | null>(null)
+const cachedTemplates = ref<any | null>(null)
+const TEMPLATE_CACHE_KEY = 'template_cached_json'
 
 const standardTemplates = ref<StandardTemplate[]>([
   {
@@ -137,64 +139,65 @@ const standardTemplates = ref<StandardTemplate[]>([
     endpoint: '/api/ai/smart-data-validation',
     method: 'POST',
     payload: { instructions: '验证数据完整性，检查数值范围，标记异常值' }
+  },
+  {
+    id: 201,
+    title: t('template_excel_analyze_title'),
+    desc: t('template_excel_analyze_desc'),
+    endpoint: '/api/excel/get-data',
+    method: 'POST',
+    payload: { instructions: '读取 Excel 数据并返回数组（4.1）', range: 'A1:Z100', returnType: 'array' }
   }
 ])
 
-const excelAnalyzeTemplate: StandardTemplate = {
-  id: 201,
-  title: t('template_excel_analyze_title'),
-  desc: t('template_excel_analyze_desc'),
-  endpoint: '/api/ai/excel-analyze',
-  method: 'POST',
-  payload: { analysisRequest: '分析excel文件中内容' }
-}
-
-function onApplyTemplate() {
-  alert(t('applyTemplateAlert', { name: t('template_common_sales') }))
+async function onApplyTemplate() {
+  const tpl = standardTemplates.value.find(t => t.id === 201)
+  if (!tpl) {
+    alert(t('applyTemplateFailed'))
+    return
+  }
+  await applyStandardTemplate(tpl)
 }
 
 function onExportTemplates() {
-  alert(t('exportTemplatesAlert'))
+  const data = cachedTemplates.value
+  if (!data) {
+    alert(t('templateCacheEmpty'))
+    return
+  }
+  try {
+    const blob = new Blob([formatJson(data)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'templates_cached.json'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    alert(t('exportTemplatesAlert'))
+  }
 }
 
 function onImportTemplates() {
-  alert(t('importTemplatesAlert'))
-}
-
-async function applySalesTemplate() {
-  try {
-    const result = await applyTemplate(1, {})
-    if (result.success) {
-      alert(t('templateApplySuccess', { name: t('template_common_sales'), msg: result.message || '' }))
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'application/json'
+  input.onchange = async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      setCachedTemplates(parsed)
+      alert(t('importTemplatesSuccess'))
+    } catch (err) {
+      console.error('Import template failed', err)
+      alert(t('importTemplatesFailed'))
     }
-  } catch (error) {
-    console.error('应用模板失败:', error)
-    alert(t('applyTemplateFailed'))
   }
-}
-
-async function applyPivotTemplate() {
-  try {
-    const result = await applyTemplate(2, {})
-    if (result.success) {
-      alert(t('templateApplySuccess', { name: t('template_pivot_dept_month'), msg: result.message || '' }))
-    }
-  } catch (error) {
-    console.error('应用模板失败:', error)
-    alert(t('applyTemplateFailed'))
-  }
-}
-
-async function applyCleaningTemplate() {
-  try {
-    const result = await applyTemplate(3, {})
-    if (result.success) {
-      alert(t('templateApplySuccess', { name: t('template_cleaning'), msg: result.message || '' }))
-    }
-  } catch (error) {
-    console.error('应用模板失败:', error)
-    alert(t('applyTemplateFailed'))
-  }
+  input.click()
 }
 
 function buildPayload(tpl: StandardTemplate) {
@@ -260,6 +263,21 @@ function formatJson(obj: any) {
   try { return JSON.stringify(obj, null, 2) } catch (e) { return '' }
 }
 
+function setCachedTemplates(data: any) {
+  cachedTemplates.value = data
+  try {
+    localStorage.setItem(TEMPLATE_CACHE_KEY, JSON.stringify(data))
+  } catch (e) { /* ignore */ }
+}
+
+function loadCachedTemplates() {
+  try {
+    const s = localStorage.getItem(TEMPLATE_CACHE_KEY)
+    if (!s) return
+    cachedTemplates.value = JSON.parse(s)
+  } catch (e) { /* ignore */ }
+}
+
 async function exportTemplate(tpl: StandardTemplate) {
   try {
     const data = templatePayload(tpl, false)
@@ -318,6 +336,7 @@ watch(instructionInputs, (val) => {
 
 onMounted(() => {
   loadSavedInstructions()
+  loadCachedTemplates()
 })
 </script>
 

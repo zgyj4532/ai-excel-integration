@@ -11,6 +11,10 @@
   "dependencies": {
     "@univerjs/preset-sheets-core": "^0.15.4",
     "@univerjs/presets": "^0.15.4",
+    "@univerjs/engine-formula": "^0.15.4",
+    "@univerjs/sheets-formula": "^0.15.4",
+    "@univerjs/themes": "^0.15.4",
+    "@univerjs/ui-adapter-vue3": "^0.15.4",
     "dotenv": "^16.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",

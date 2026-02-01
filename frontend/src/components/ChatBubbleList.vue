@@ -11,16 +11,7 @@
               <div v-for="(seg, i) in splitAllApply(m.text)" :key="i" style="width:100%;">
                 <div v-if="seg.type === 'text'" v-html="escapeHtml(seg.text)"></div>
                 <div v-else-if="seg.type === 'token'">
-                  <div v-if="!(props.appliedIds || []).includes(tokenKey(m.id,i))" class="apply-box">
-                    <div class="apply-text">{{ seg.inner }}</div>
-                    <div class="apply-actions">
-                      <button class="btn-execute" :disabled="(props.executingIds || []).includes(tokenKey(m.id,i))" @click="$emit('apply-token', seg.token, tokenKey(m.id,i), m.id, i)">
-                        {{ (props.executingIds || []).includes(tokenKey(m.id,i)) ? '执行中...' : '执行' }}
-                      </button>
-                      <button class="btn-skip" @click="$emit('skip-token', tokenKey(m.id,i), m.id, i)">跳过</button>
-                    </div>
-                  </div>
-                  <div v-else class="apply-text applied">{{ seg.inner }}</div>
+                  <div class="apply-text applied">{{ seg.inner }}</div>
                 </div>
               </div>
             </div>
@@ -35,8 +26,254 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ messages: Array<{ id: number; role: string; text: string; placeholder?: boolean }>, executingIds?: string[], appliedIds?: string[] }>()
+import { watch } from 'vue'
+
+type SnapshotOps = {
+  getActiveWorkbook?: () => any
+  getFormulaEngine?: () => any
+}
+
+const props = defineProps<{ messages: Array<{ id: number; role: string; text: string; placeholder?: boolean }>, executingIds?: string[], appliedIds?: string[], snapshotOps?: SnapshotOps | null }>()
 const emit = defineEmits(['apply-token','skip-token'])
+
+const processedMessages = new Set<string>()
+const ENABLE_AUTO_EXCEL_APPLY = true
+
+watch(
+  () => props.messages.map(m => ({ id: m.id, role: m.role, text: m.text, placeholder: m.placeholder })),
+  (messages) => {
+    if (!ENABLE_AUTO_EXCEL_APPLY) return
+    messages.forEach(({ id, role, text, placeholder }) => {
+      if (role !== 'ai' || placeholder) return
+      const key = `${id}:${text}`
+      if (processedMessages.has(key)) return
+      const success = applyExcelCommandsFromMessage(text)
+      if (success) {
+        processedMessages.add(key)
+      }
+    })
+  },
+  { deep: true, immediate: true }
+)
+
+watch(
+  () => props.snapshotOps,
+  () => {
+    if (!ENABLE_AUTO_EXCEL_APPLY) return
+    props.messages.forEach((m) => {
+      if (m.role !== 'ai' || m.placeholder) return
+      const key = `${m.id}:${m.text}`
+      if (processedMessages.has(key)) return
+      const success = applyExcelCommandsFromMessage(m.text)
+      if (success) {
+        processedMessages.add(key)
+      }
+    })
+  },
+  { immediate: true }
+)
+
+function applyExcelCommandsFromMessage(raw: string) {
+  if (!raw) return false
+  const sheet = getActiveSheet()
+  if (!sheet) return false
+
+  const assignments = extractAssignments(raw)
+  let applied = false
+  assignments.forEach(({ columnLetters, rowIndex, value }) => {
+    try {
+      ensureColumnExists(sheet, columnLetters)
+      ensureRowExists(sheet, rowIndex)
+      const cellRef = `${columnLetters}${rowIndex + 1}`
+      const normalizedValue = normalizeAssignmentValue(value)
+      const range = sheet.getRange?.(cellRef) ?? sheet.getRangeByA1?.(cellRef)
+      if (!range) return
+      if (typeof range.setValue === 'function') {
+        range.setValue(normalizedValue)
+      } else if (typeof range.setValues === 'function') {
+        range.setValues([[normalizedValue]])
+      }
+      applied = true
+    } catch (error) {
+      console.warn('Failed to apply assignment', error)
+    }
+  })
+  if (applied) {
+    try {
+      const engine = props.snapshotOps?.getFormulaEngine?.()
+      engine?.executeCalculation?.()
+    } catch (error) {
+      console.warn('Formula calculation failed', error)
+    }
+  }
+  return applied
+}
+
+function getActiveSheet() {
+  const workbook = props.snapshotOps?.getActiveWorkbook?.()
+  if (!workbook || typeof workbook.getActiveSheet !== 'function') return null
+  return workbook.getActiveSheet()
+}
+
+function extractAssignments(raw: string) {
+  const results: Array<{ columnLetters: string; rowIndex: number; value: string }> = []
+  const sanitized = String(raw || '')
+    .replace(/token:\s*/gi, '')
+    .replace(/：/g, ':')
+    .replace(/，/g, ',')
+
+  const assignmentHead = /([A-Z]+)(\d+)\s*(?:=|:)/gi
+  let match: RegExpExecArray | null
+
+  while ((match = assignmentHead.exec(sanitized))) {
+    const columnLetters = match[1].toUpperCase()
+    const rowNumber = Number(match[2])
+    if (!rowNumber) continue
+    const rowIndex = rowNumber - 1
+    const valueStart = assignmentHead.lastIndex
+    let valueEnd = sanitized.length
+    for (let i = valueStart; i < sanitized.length; i++) {
+      const char = sanitized[i]
+      if (char === '\n' || char === ';') {
+        valueEnd = i
+        break
+      }
+    }
+    const value = sanitized.slice(valueStart, valueEnd).trim()
+    results.push({ columnLetters, rowIndex, value })
+    assignmentHead.lastIndex = valueEnd
+  }
+  const applyFormula = /APPLY_FORMULA:([A-Z]+)(\d+):?=([^\]\n;]+)/gi
+  while ((match = applyFormula.exec(sanitized))) {
+    const columnLetters = match[1].toUpperCase()
+    const rowNumber = Number(match[2])
+    if (!rowNumber) continue
+    const rowIndex = rowNumber - 1
+    const value = match[3].trim()
+    results.push({ columnLetters, rowIndex, value })
+  }
+  return results
+}
+
+function normalizeAssignmentValue(raw: string) {
+  let text = String(raw || '').trim()
+  text = text.replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+  text = text.replace(/[。.;]+$/u, '').replace(/,+$/u, '').trim()
+  // Some auto-generated tokens may trail with a stray ']' (e.g., APPLY_FORMULA blocks); strip it to avoid broken formulas
+  text = text.replace(/\]+$/u, '').trim()
+  if (text.startsWith('=')) {
+    const body = text.slice(1).trim()
+    const isQuoted = body.startsWith('"') || body.startsWith("'")
+    const looksLikeFormula = /^[_A-Za-z][\w.]*\s*\(|^[A-Z]+\d+|^[-+]?\d/.test(body)
+    if (body && !isQuoted && !looksLikeFormula) {
+      const escaped = body.replace(/"/g, '""')
+      return `="${escaped}"`
+    }
+  }
+  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+    const inner = text.slice(1, -1)
+    const escaped = inner.replace(/"/g, '""')
+    return `="${escaped}"`
+  }
+  if (!text.startsWith('=')) {
+    return `= ${text}`
+  }
+  return text
+}
+
+function ensureColumnExists(sheet: any, columnLetters: string) {
+  const targetIndex = columnLetterToIndex(columnLetters)
+  if (targetIndex < 0) return
+  let current = getColumnCount(sheet)
+  if (current === 0) {
+    if (typeof sheet.insertColumns === 'function') {
+      sheet.insertColumns(0, targetIndex + 1)
+      current = targetIndex + 1
+    } else if (typeof sheet.insertColumnBefore === 'function') {
+      for (let i = 0; i <= targetIndex; i++) {
+        sheet.insertColumnBefore(0)
+        current += 1
+      }
+    }
+  }
+  if (current === 0) current = 1
+  while (current <= targetIndex) {
+    const diff = targetIndex + 1 - current
+    if (diff <= 0) break
+    if (typeof sheet.insertColumns === 'function') {
+      sheet.insertColumns(current, diff)
+      current += diff
+    } else if (typeof sheet.insertColumnAfter === 'function') {
+      sheet.insertColumnAfter(current - 1)
+      current += 1
+    } else if (typeof sheet.insertColumnsAfter === 'function') {
+      sheet.insertColumnsAfter(current - 1, diff)
+      current += diff
+    } else {
+      break
+    }
+  }
+}
+
+function ensureRowExists(sheet: any, rowIndex: number) {
+  if (rowIndex < 0) return
+  let current = getRowCount(sheet)
+  if (current === 0) {
+    if (typeof sheet.insertRows === 'function') {
+      sheet.insertRows(0, rowIndex + 1)
+      current = rowIndex + 1
+    } else if (typeof sheet.insertRowBefore === 'function') {
+      for (let i = 0; i <= rowIndex; i++) {
+        sheet.insertRowBefore(0)
+        current += 1
+      }
+    }
+  }
+  if (current === 0) current = 1
+  while (current <= rowIndex) {
+    const diff = rowIndex + 1 - current
+    if (diff <= 0) break
+    if (typeof sheet.insertRows === 'function') {
+      sheet.insertRows(current, diff)
+      current += diff
+    } else if (typeof sheet.insertRowAfter === 'function') {
+      sheet.insertRowAfter(current - 1)
+      current += 1
+    } else if (typeof sheet.insertRowsAfter === 'function') {
+      sheet.insertRowsAfter(current - 1, diff)
+      current += diff
+    } else {
+      break
+    }
+  }
+}
+
+function getColumnCount(sheet: any) {
+  if (!sheet) return 0
+  if (typeof sheet.getColumnCount === 'function') return sheet.getColumnCount()
+  if (typeof sheet.getColumnsCount === 'function') return sheet.getColumnsCount()
+  if (typeof sheet.getMaxColumns === 'function') return sheet.getMaxColumns()
+  return 0
+}
+
+function getRowCount(sheet: any) {
+  if (!sheet) return 0
+  if (typeof sheet.getRowCount === 'function') return sheet.getRowCount()
+  if (typeof sheet.getRowsCount === 'function') return sheet.getRowsCount()
+  if (typeof sheet.getMaxRows === 'function') return sheet.getMaxRows()
+  return 0
+}
+
+function columnLetterToIndex(letters: string) {
+  let result = 0
+  const upper = letters.toUpperCase()
+  for (let i = 0; i < upper.length; i++) {
+    const charCode = upper.charCodeAt(i)
+    if (charCode < 65 || charCode > 90) return -1
+    result = result * 26 + (charCode - 64)
+  }
+  return result - 1
+}
 
 function tokenKey(msgId: number, idx: number) {
   return `${msgId}-${idx}`
@@ -49,16 +286,6 @@ function escapeHtml(s: string) {
 function hasApply(s: string) {
   if (!s) return false
   return /(\[(APPLY_FORMULA|FILL_DOWN|SET_CELL|INSERT_ROW|INSERT_COLUMN|DELETE_ROW|DELETE_COLUMN):[^\]]+\])|(^|\n)(token:)?\s*[A-Z]+\d+\s*:/i.test(s)
-}
-
-function extractInner(s: string) {
-  const m = String(s).match(/\[APPLY_FORMULA:([^\]]+)\]/i)
-  return m ? m[1] : s
-}
-
-function extractFull(s: string) {
-  const m = String(s).match(/(\[APPLY_FORMULA:[^\]]+\])/i)
-  return m ? m[1] : s
 }
 
 function splitAllApply(s: string) {

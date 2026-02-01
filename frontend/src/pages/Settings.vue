@@ -2,7 +2,6 @@
   <div class="settings">
     <div class="topbar">
       <h2>{{ $t('settingsTitle') }}</h2>
-      <div class="muted">{{ $t('settingsSubtitle') }}</div>
     </div>
 
     <div class="content">
@@ -135,11 +134,11 @@ async function saveApiConfig() {
       try { setApiBaseUrl(apiEndpoint.value) } catch (e) { }
       alert(t('savedApi', { api: apiEndpoint.value }))
     } else {
-      alert(t('saveFailed'))
+      alert(t('saveApiFailed'))
     }
   } catch (e) {
     console.error('保存 API 配置失败:', e)
-    alert(t('saveFailed'))
+    alert(t('saveApiFailed'))
   }
 }
 

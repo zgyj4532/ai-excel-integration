@@ -171,3 +171,5 @@ yarn-error.log*
 
 src/main/resources/static
 storage/uploads
+index.html
+index.json
