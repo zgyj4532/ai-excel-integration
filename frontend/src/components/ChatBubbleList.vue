@@ -333,7 +333,7 @@ function splitAllApply(s: string) {
 </script>
 
 <style scoped>
-.chat-bubble-list { display:flex; flex-direction:column; gap:8px; padding:8px; height:700px; overflow:auto }
+.chat-bubble-list { display:flex; flex-direction:column; gap:8px; padding:8px; max-height:100%; overflow:visible }
 .bubble-row { display:flex }
 .bubble-row.user { justify-content:flex-end }
 .bubble-row.ai { justify-content:flex-start }

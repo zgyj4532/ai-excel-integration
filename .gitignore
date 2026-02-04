@@ -170,6 +170,7 @@ yarn-error.log*
 .env.production.local
 
 src/main/resources/static
-storage/uploads
-index.html
-index.json
+src/main/resources/static/index.html
+storage/uploads/index.json
+storage/uploads/
+

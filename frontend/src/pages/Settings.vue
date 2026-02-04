@@ -12,9 +12,16 @@
           <div class="api-config">
             <label>{{ $t('apiEndpointLabel') }}</label>
             <input v-model="apiEndpoint" :placeholder="$t('apiEndpointPlaceholder')" />
-            <button @click="saveApiConfig" class="save-btn">{{ $t('saveBtn') }}</button>
+          </div>
+          <div class="api-config api-key-config">
+            <label>{{ $t('apiKeyInputLabel') }}</label>
+            <input v-model="apiKey" :placeholder="$t('apiKeyPlaceholder')" type="password" />
+          </div>
+          <div class="api-actions">
+            <button @click="saveApiSettings" class="save-btn">{{ $t('saveBtn') }}</button>
           </div>
           <div class="muted" style="margin-top: 8px;">{{ $t('currentApi', { api: apiEndpoint }) }}</div>
+          <div class="muted" v-if="apiKeyMasked">{{'api-key: ' + apiKeyMasked }}</div>
         </div>
       </div>
 
@@ -90,6 +97,8 @@ const { t } = useI18n()
 
 // API配置：默认使用页面 origin
 const apiEndpoint = ref((typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : 'http://localhost:8081')
+const apiKey = ref('')
+const apiKeyMasked = ref('')
 
 // 服务状态
 const backendStatus = ref(t('unknown'))
@@ -121,25 +130,49 @@ const wsConfigStatusClass = computed(() => {
 })
 
 // 方法
-async function saveApiConfig() {
-  // 将 API Endpoint 保存到后端系统设置（仅示例字段）
-  const settings = {
-    apiEndpoint: apiEndpoint.value
-  }
+async function saveApiSettings() {
+  const base = (apiEndpoint.value || '').replace(/\/$/, '')
+  const messages: string[] = []
 
+  // 保存 endpoint
   try {
+    const settings = { apiEndpoint: apiEndpoint.value }
     const result = await saveSystemSettings(settings, apiEndpoint.value)
     if (result && result.success) {
-      // update client cached base so subsequent calls use new endpoint
-      try { setApiBaseUrl(apiEndpoint.value) } catch (e) { }
-      alert(t('savedApi', { api: apiEndpoint.value }))
+      try { setApiBaseUrl(base) } catch (e) { /* ignore */ }
+      messages.push(t('savedApi', { api: apiEndpoint.value }))
     } else {
-      alert(t('saveApiFailed'))
+      messages.push(t('saveApiFailed'))
     }
   } catch (e) {
     console.error('保存 API 配置失败:', e)
-    alert(t('saveApiFailed'))
+    messages.push(t('saveApiFailed'))
   }
+
+  // 保存 apiKey（可选）
+  if (apiKey.value) {
+    try {
+      const result = await fetchJson(`${base}/api/sendapi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: apiKey.value, baseUrl: base })
+      })
+      if (result && result.success) {
+        apiKeyMasked.value = result.apiKeyMasked || ''
+        try { localStorage.setItem('aiexcel_api_key', apiKey.value) } catch (e) { /* ignore */ }
+        try { setApiBaseUrl(base) } catch (e) { /* ignore */ }
+        messages.push(t('apiKeySaved'))
+        await checkStatus()
+      } else {
+        messages.push(t('apiKeySaveFailed'))
+      }
+    } catch (error) {
+      console.error('保存 API Key 失败:', error)
+      messages.push(t('apiKeySaveFailed'))
+    }
+  }
+
+  if (messages.length) alert(messages.join('\n'))
 }
 
 async function checkStatus() {
@@ -203,6 +236,27 @@ onMounted(async () => {
   } catch (error) {
     console.error('获取系统设置失败:', error)
   }
+
+  try {
+    const base = (apiEndpoint.value || '').replace(/\/$/, '')
+    const status = await fetchJson(`${base}/api/status?reveal=true`)
+    if (status?.diagnosis?.keyPlain) {
+      apiKey.value = status.diagnosis.keyPlain
+    } else if (status?.apiKeyMasked) {
+      apiKeyMasked.value = status.apiKeyMasked
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  if (!apiKey.value) {
+    try {
+      const cached = localStorage.getItem('aiexcel_api_key')
+      if (cached) apiKey.value = cached
+    } catch (e) {
+      // ignore
+    }
+  }
 })
 </script>
 
@@ -225,8 +279,18 @@ onMounted(async () => {
   color: var(--text-primary);
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
 }
+
+/* Match landing page scrollbar style */
+.settings::-webkit-scrollbar { width: 10px; }
+.settings::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-left: 1px solid rgba(197,160,89,0.15); }
+.settings::-webkit-scrollbar-thumb {
+  background: #f5f5f5;
+  border-radius: 10px;
+  border: 1px solid rgba(10,11,14,0.6);
+}
+.settings::-webkit-scrollbar-thumb:hover { background: #ffffff; }
 
 .settings::before {
   content: '';

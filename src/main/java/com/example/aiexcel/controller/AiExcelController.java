@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.io.IOException;
 import java.util.Map;
@@ -145,7 +147,7 @@ public class AiExcelController {
 
                 String outputFileName = "modified_" + file.getOriginalFilename();
                 return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"" + outputFileName + "\"")
+                    .header("Content-Disposition", buildContentDisposition(outputFileName))
                     .body(fileContent);
             } else {
                 // 如果处理失败，返回错误
@@ -413,7 +415,7 @@ public class AiExcelController {
             byte[] data = java.nio.file.Files.readAllBytes(p);
             String filename = p.getFileName().toString();
             return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Disposition", buildContentDisposition(filename))
                 .body(data);
         } catch (Exception e) {
             logger.error("Error downloading saved file {}: {}", fileId, e.getMessage(), e);
@@ -483,6 +485,8 @@ public class AiExcelController {
         response.put("hasApiKey", hasApiKey);
         response.put("apiConfigured", apiConfigured);
         response.put("status", "available");
+        response.put("apiKeyMasked", EnvFile.mask(foundKey));
+        response.put("baseUrl", resolvedBase);
 
         if (isDev) {
             java.util.Map<String, Object> diag = new java.util.HashMap<>();
@@ -513,6 +517,60 @@ public class AiExcelController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/sendapi")
+    public ResponseEntity<Map<String, Object>> sendApi(@RequestBody Map<String, String> payload) {
+        String apiKey = payload != null ? payload.get("apiKey") : null;
+        String baseUrl = payload != null ? payload.get("baseUrl") : null;
+
+        Map<String, Object> resp = new HashMap<>();
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            resp.put("success", false);
+            resp.put("error", "apiKey is required");
+            return ResponseEntity.badRequest().body(resp);
+        }
+
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            baseUrl = EnvFile.getBaseUrl();
+        }
+
+        Integer status = aiService.testConnectionWith(apiKey, baseUrl);
+        boolean ok = status != null && status == 200;
+
+        if (ok) {
+            EnvFile.setRuntimeApiKey(apiKey);
+            EnvFile.setRuntimeBaseUrl(baseUrl);
+            resp.put("success", true);
+            resp.put("status", status);
+            resp.put("apiKeyMasked", EnvFile.mask(apiKey));
+            resp.put("baseUrl", baseUrl);
+            resp.put("message", "API key and base URL validated and cached.");
+            return ResponseEntity.ok(resp);
+        } else {
+            resp.put("success", false);
+            resp.put("status", status);
+            resp.put("error", "Failed to validate API credentials");
+            return ResponseEntity.badRequest().body(resp);
+        }
+    }
+
+    private String buildContentDisposition(String filename) {
+        String original = (filename == null || filename.isEmpty()) ? "download" : filename.replace("\"", "");
+
+        // RFC6266 fallback must be pure ASCII; replace non-ASCII/control chars with '_'
+        StringBuilder ascii = new StringBuilder();
+        original.chars().forEach(c -> {
+            if (c >= 32 && c <= 126) {
+                ascii.append((char) c);
+            } else {
+                ascii.append('_');
+            }
+        });
+        String fallback = ascii.length() > 0 ? ascii.toString() : "download";
+
+        String encoded = URLEncoder.encode(original, StandardCharsets.UTF_8).replace("+", "%20");
+        return "attachment; filename=\"" + fallback + "\"; filename*=UTF-8''" + encoded;
     }
 
     @PostMapping("/ai/chat")
