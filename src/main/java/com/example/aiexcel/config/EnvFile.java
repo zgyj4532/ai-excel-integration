@@ -8,7 +8,26 @@ public final class EnvFile {
 
     private EnvFile() {}
 
+    // Runtime overrides set via API (e.g., /api/sendapi). Kept in-memory; not persisted.
+    private static volatile String runtimeApiKey = null;
+    private static volatile String runtimeBaseUrl = null;
+
+    public static void setRuntimeApiKey(String key) {
+        runtimeApiKey = isPresent(key) ? key.trim() : null;
+        if (runtimeApiKey != null) {
+            System.setProperty("qwen.api.api-key", runtimeApiKey);
+        }
+    }
+
+    public static void setRuntimeBaseUrl(String baseUrl) {
+        runtimeBaseUrl = isPresent(baseUrl) ? baseUrl.trim() : null;
+        if (runtimeBaseUrl != null) {
+            System.setProperty("qwen.api.base-url", runtimeBaseUrl);
+        }
+    }
+
     public static String getApiKey() {
+        if (isPresent(runtimeApiKey)) return runtimeApiKey.trim();
         String key = System.getenv("DASHSCOPE_API_KEY");
         if (isPresent(key)) return key.trim();
 
@@ -26,6 +45,7 @@ public final class EnvFile {
     }
 
     public static String getBaseUrl() {
+        if (isPresent(runtimeBaseUrl)) return runtimeBaseUrl.trim();
         String b = System.getProperty("qwen.api.base-url");
         if (isPresent(b)) return b.trim();
 

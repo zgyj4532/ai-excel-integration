@@ -23,7 +23,7 @@
     </div>
 
     <div style="display:flex; gap:8px; margin-top:8px">
-      <button @click="applyTemplate('创建新列\'Sum\'并计算A列和B列的和')">{{ $t('ai_command_template') }}</button>
+      <button @click="applyTemplate(t('aiCommandTemplateText'))">{{ $t('ai_command_template') }}</button>
     </div>
   </div>
 </template>

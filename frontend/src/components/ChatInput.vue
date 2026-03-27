@@ -12,13 +12,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const emit = defineEmits(['send'])
 const text = ref('')
 const ta = ref<HTMLTextAreaElement | null>(null)
-const placeholder = '请输入内容'
-const sendLabel = 'send'
+const { t } = useI18n()
+const placeholder = computed(() => t('chatInputPlaceholder'))
+const sendLabel = computed(() => t('chatSendLabel'))
 
 function onSend(){
   const v = String(text.value || '').trim()

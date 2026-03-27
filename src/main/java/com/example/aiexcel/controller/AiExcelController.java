@@ -10,15 +10,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @RestController
 @RequestMapping("/api")
 public class AiExcelController {
 
     private static final Logger logger = LoggerFactory.getLogger(AiExcelController.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Autowired
     private AiExcelIntegrationService aiExcelIntegrationService;
@@ -50,11 +58,40 @@ public class AiExcelController {
 
     @PostMapping("/ai/excel-with-ai")
     public ResponseEntity<Map<String, Object>> processExcelWithAI(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "fileId", required = false) String fileId,
             @RequestParam("command") String command) {
         logger.info("/api/ai/excel-with-ai called, file={}, command={}", file == null ? "<none>" : file.getOriginalFilename(), command);
         try {
-            Map<String, Object> result = aiExcelIntegrationService.processExcelWithAI(file, command);
+            // If client provided fileId (previously saved on server), load it
+            if ((file == null || file.isEmpty()) && fileId != null && !fileId.trim().isEmpty()) {
+                java.nio.file.Path p = java.nio.file.Paths.get("storage", "uploads", fileId).normalize();
+                if (java.nio.file.Files.exists(p)) {
+                    byte[] data = java.nio.file.Files.readAllBytes(p);
+                    final byte[] bytes = data;
+                    file = new MultipartFile() {
+                        @Override public String getName() { return fileId; }
+                        @Override public String getOriginalFilename() { return fileId; }
+                        @Override public String getContentType() { return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; }
+                        @Override public boolean isEmpty() { return bytes == null || bytes.length == 0; }
+                        @Override public long getSize() { return bytes.length; }
+                        @Override public byte[] getBytes() { return bytes; }
+                        @Override public java.io.InputStream getInputStream() { return new java.io.ByteArrayInputStream(bytes); }
+                        @Override public void transferTo(java.io.File dest) throws java.io.IOException, IllegalStateException {
+                            java.nio.file.Files.write(dest.toPath(), bytes);
+                        }
+                    };
+                } else {
+                    Map<String, Object> response = Map.of(
+                        "success", false,
+                        "error", "fileId not found on server"
+                    );
+                    return ResponseEntity.badRequest().body(response);
+                }
+            }
+            // 确保AI输出使用中文
+            String chineseCommand = command + " Please respond in Chinese.";
+            Map<String, Object> result = aiExcelIntegrationService.processExcelWithAI(file, chineseCommand);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -73,10 +110,34 @@ public class AiExcelController {
 
     @PostMapping(value = "/ai/excel-with-ai-download", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     public ResponseEntity<byte[]> processExcelWithAIAndDownload(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "fileId", required = false) String fileId,
             @RequestParam("command") String command) {
-        logger.info("/api/ai/excel-with-ai-download called, file={}, command={}", file == null ? "<none>" : file.getOriginalFilename(), command);
+        logger.info("/api/ai/excel-with-ai-download called, file={}, fileId={}, command={}", file == null ? "<none>" : file.getOriginalFilename(), fileId, command);
         try {
+            // 如果传入 fileId，从服务器加载
+            if ((file == null || file.isEmpty()) && fileId != null && !fileId.trim().isEmpty()) {
+                java.nio.file.Path p = java.nio.file.Paths.get("storage", "uploads", fileId).normalize();
+                if (java.nio.file.Files.exists(p)) {
+                    byte[] data = java.nio.file.Files.readAllBytes(p);
+                    final byte[] bytes = data;
+                    file = new MultipartFile() {
+                        @Override public String getName() { return fileId; }
+                        @Override public String getOriginalFilename() { return fileId; }
+                        @Override public String getContentType() { return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; }
+                        @Override public boolean isEmpty() { return bytes == null || bytes.length == 0; }
+                        @Override public long getSize() { return bytes.length; }
+                        @Override public byte[] getBytes() { return bytes; }
+                        @Override public java.io.InputStream getInputStream() { return new java.io.ByteArrayInputStream(bytes); }
+                        @Override public void transferTo(java.io.File dest) throws java.io.IOException, IllegalStateException {
+                            java.nio.file.Files.write(dest.toPath(), bytes);
+                        }
+                    };
+                } else {
+                    return ResponseEntity.badRequest().body(null);
+                }
+            }
+
             // 重新实现，直接在内存中处理而不保存到文件
             org.apache.poi.ss.usermodel.Workbook workbook = aiExcelIntegrationService.getExcelWorkbookWithAIChanges(file, command);
 
@@ -86,7 +147,7 @@ public class AiExcelController {
 
                 String outputFileName = "modified_" + file.getOriginalFilename();
                 return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"" + outputFileName + "\"")
+                    .header("Content-Disposition", buildContentDisposition(outputFileName))
                     .body(fileContent);
             } else {
                 // 如果处理失败，返回错误
@@ -125,7 +186,9 @@ public class AiExcelController {
             @RequestParam("analysisRequest") String analysisRequest) {
         logger.info("/api/ai/excel-analyze called, file={}, analysisRequest={}", file == null ? "<none>" : file.getOriginalFilename(), analysisRequest);
         try {
-            Map<String, Object> result = aiExcelIntegrationService.analyzeExcelData(file, analysisRequest);
+            // 确保AI分析结果使用中文
+            String chineseAnalysisRequest = analysisRequest + " Please respond in Chinese.";
+            Map<String, Object> result = aiExcelIntegrationService.analyzeExcelData(file, chineseAnalysisRequest);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -211,6 +274,155 @@ public class AiExcelController {
         }
     }
 
+    /**
+     * 保存 Excel 文件到服务器磁盘（供前端在执行 AI 命令后持久化最新文件）
+     */
+    @PostMapping("/excel/save")
+    public ResponseEntity<Map<String, Object>> saveExcelFile(@RequestParam("file") MultipartFile file) {
+        logger.info("/api/excel/save called, file={}", file == null ? "<none>" : file.getOriginalFilename());
+        try {
+            if (file == null || file.isEmpty()) {
+                Map<String, Object> response = Map.of(
+                    "success", false,
+                    "error", "File is empty"
+                );
+                return ResponseEntity.badRequest().body(response);
+            }
+            java.nio.file.Path storageDir = java.nio.file.Paths.get("storage", "uploads");
+            java.nio.file.Files.createDirectories(storageDir);
+            String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : ("upload_" + System.currentTimeMillis() + ".xlsx");
+            String uniqueName = System.currentTimeMillis() + "_" + original;
+            java.nio.file.Path target = storageDir.resolve(java.nio.file.Paths.get(uniqueName)).normalize();
+
+            // Prevent directory traversal
+            if (!target.startsWith(storageDir)) {
+                Map<String, Object> response = Map.of(
+                    "success", false,
+                    "error", "Invalid file path"
+                );
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Ensure parent directory exists (handle cases where target may include subpaths)
+            try {
+                java.nio.file.Path parent = target.getParent();
+                if (parent != null) java.nio.file.Files.createDirectories(parent);
+            } catch (Exception ex) {
+                logger.warn("Failed to create parent directories for {}: {}", target.toString(), ex.getMessage());
+            }
+
+            // java.io.File dest = target.toFile();
+            // Use stream copy instead of transferTo to avoid Tomcat DiskFileItem write issues
+            try (java.io.InputStream in = file.getInputStream()) {
+                java.nio.file.Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // 写入索引文件（storage/uploads/index.json）以便管理
+            try {
+                java.nio.file.Path indexPath = storageDir.resolve("index.json");
+                List<Map<String, Object>> list = new ArrayList<>();
+                if (java.nio.file.Files.exists(indexPath)) {
+                    try {
+                        byte[] idxBytes = java.nio.file.Files.readAllBytes(indexPath);
+                        if (idxBytes != null && idxBytes.length > 0) {
+                            list = MAPPER.readValue(idxBytes, new TypeReference<List<Map<String,Object>>>(){});
+                        }
+                    } catch (Exception ex) {
+                        logger.warn("Failed to read existing index.json: {}", ex.getMessage());
+                        list = new ArrayList<>();
+                    }
+                }
+                Map<String, Object> meta = new HashMap<>();
+                meta.put("fileId", uniqueName);
+                meta.put("originalName", original);
+                meta.put("path", target.toString());
+                meta.put("uploadedAt", System.currentTimeMillis());
+                list.add(meta);
+                try {
+                    byte[] out = MAPPER.writeValueAsBytes(list);
+                    java.nio.file.Files.write(indexPath, out);
+                } catch (Exception ex) {
+                    logger.warn("Failed to write index.json: {}", ex.getMessage());
+                }
+
+                Map<String, Object> response = Map.of(
+                    "success", true,
+                    "message", "File saved",
+                    "fileId", uniqueName
+                );
+                logger.info("Saved uploaded file to {} (fileId={})", target.toString(), uniqueName);
+                return ResponseEntity.ok(response);
+            } catch (Exception ex) {
+                logger.warn("Failed to update index.json: {}", ex.getMessage());
+                Map<String, Object> response = Map.of(
+                    "success", true,
+                    "message", "File saved",
+                    "fileId", uniqueName
+                );
+                return ResponseEntity.ok(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error saving uploaded file: {}", e.getMessage(), e);
+            Map<String, Object> response = Map.of(
+                "success", false,
+                "error", "Error saving file: " + e.getMessage()
+            );
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * 列出已保存的 Excel 文件元信息
+     */
+    @GetMapping("/excel/saved-files")
+    public ResponseEntity<Map<String, Object>> listSavedFiles() {
+        try {
+            java.nio.file.Path storageDir = java.nio.file.Paths.get("storage", "uploads");
+            java.nio.file.Path indexPath = storageDir.resolve("index.json");
+            List<Map<String, Object>> list = new ArrayList<>();
+            if (java.nio.file.Files.exists(indexPath)) {
+                try {
+                    byte[] idxBytes = java.nio.file.Files.readAllBytes(indexPath);
+                    if (idxBytes != null && idxBytes.length > 0) {
+                        list = MAPPER.readValue(idxBytes, new TypeReference<List<Map<String,Object>>>(){});
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Failed to read index.json: {}", ex.getMessage());
+                }
+            }
+            Map<String, Object> response = Map.of(
+                "success", true,
+                "files", list
+            );
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = Map.of(
+                "success", false,
+                "error", "Error listing saved files: " + e.getMessage()
+            );
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * 通过 fileId 直接下载已保存的文件
+     */
+    @GetMapping(value = "/excel/download")
+    public ResponseEntity<byte[]> downloadSavedFile(@RequestParam("fileId") String fileId) {
+        try {
+            java.nio.file.Path p = java.nio.file.Paths.get("storage", "uploads", fileId).normalize();
+            if (!java.nio.file.Files.exists(p)) return ResponseEntity.notFound().build();
+            byte[] data = java.nio.file.Files.readAllBytes(p);
+            String filename = p.getFileName().toString();
+            return ResponseEntity.ok()
+                .header("Content-Disposition", buildContentDisposition(filename))
+                .body(data);
+        } catch (Exception e) {
+            logger.error("Error downloading saved file {}: {}", fileId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
     @PostMapping("/excel/sort-data")
     public ResponseEntity<Map<String, Object>> sortData(@RequestParam("file") MultipartFile file,
                                                         @RequestParam("sortColumn") String sortColumn,
@@ -273,6 +485,8 @@ public class AiExcelController {
         response.put("hasApiKey", hasApiKey);
         response.put("apiConfigured", apiConfigured);
         response.put("status", "available");
+        response.put("apiKeyMasked", EnvFile.mask(foundKey));
+        response.put("baseUrl", resolvedBase);
 
         if (isDev) {
             java.util.Map<String, Object> diag = new java.util.HashMap<>();
@@ -305,6 +519,60 @@ public class AiExcelController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/sendapi")
+    public ResponseEntity<Map<String, Object>> sendApi(@RequestBody Map<String, String> payload) {
+        String apiKey = payload != null ? payload.get("apiKey") : null;
+        String baseUrl = payload != null ? payload.get("baseUrl") : null;
+
+        Map<String, Object> resp = new HashMap<>();
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            resp.put("success", false);
+            resp.put("error", "apiKey is required");
+            return ResponseEntity.badRequest().body(resp);
+        }
+
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            baseUrl = EnvFile.getBaseUrl();
+        }
+
+        Integer status = aiService.testConnectionWith(apiKey, baseUrl);
+        boolean ok = status != null && status == 200;
+
+        if (ok) {
+            EnvFile.setRuntimeApiKey(apiKey);
+            EnvFile.setRuntimeBaseUrl(baseUrl);
+            resp.put("success", true);
+            resp.put("status", status);
+            resp.put("apiKeyMasked", EnvFile.mask(apiKey));
+            resp.put("baseUrl", baseUrl);
+            resp.put("message", "API key and base URL validated and cached.");
+            return ResponseEntity.ok(resp);
+        } else {
+            resp.put("success", false);
+            resp.put("status", status);
+            resp.put("error", "Failed to validate API credentials");
+            return ResponseEntity.badRequest().body(resp);
+        }
+    }
+
+    private String buildContentDisposition(String filename) {
+        String original = (filename == null || filename.isEmpty()) ? "download" : filename.replace("\"", "");
+
+        // RFC6266 fallback must be pure ASCII; replace non-ASCII/control chars with '_'
+        StringBuilder ascii = new StringBuilder();
+        original.chars().forEach(c -> {
+            if (c >= 32 && c <= 126) {
+                ascii.append((char) c);
+            } else {
+                ascii.append('_');
+            }
+        });
+        String fallback = ascii.length() > 0 ? ascii.toString() : "download";
+
+        String encoded = URLEncoder.encode(original, StandardCharsets.UTF_8).replace("+", "%20");
+        return "attachment; filename=\"" + fallback + "\"; filename*=UTF-8''" + encoded;
+    }
+
     @PostMapping("/ai/chat")
     public ResponseEntity<Map<String, Object>> chatWithAI(@RequestBody Map<String, String> request) {
         String userMessage = request.get("message");
@@ -318,8 +586,9 @@ public class AiExcelController {
         }
 
         try {
-            // 使用AI服务回复用户消息
-            String aiResponse = aiExcelIntegrationService.chatWithAI(userMessage);
+            // 使用AI服务回复用户消息，并确保使用中文
+            String chineseUserMessage = userMessage + " Please respond in Chinese.";
+            String aiResponse = aiExcelIntegrationService.chatWithAI(chineseUserMessage);
 
             Map<String, Object> response = Map.of(
                 "success", true,
@@ -358,8 +627,9 @@ public class AiExcelController {
         }
 
         try {
-            // 使用AI服务回复用户消息
-            String aiResponse = aiExcelIntegrationService.chatWithAI(userMessage);
+            // 使用AI服务回复用户消息，并确保使用中文
+            String chineseUserMessage = userMessage + " Please respond in Chinese.";
+            String aiResponse = aiExcelIntegrationService.chatWithAI(chineseUserMessage);
 
             Map<String, Object> response = Map.of(
                 "success", true,
@@ -391,8 +661,9 @@ public class AiExcelController {
                     return;
                 }
 
-                // 使用AI服务回复用户消息
-                String aiResponse = aiExcelIntegrationService.chatWithAI(message);
+                // 使用AI服务回复用户消息，并确保使用中文
+                String chineseMessage = message + " Please respond in Chinese.";
+                String aiResponse = aiExcelIntegrationService.chatWithAI(chineseMessage);
 
                 // 先发送一个开始事件
                 emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event()
@@ -670,7 +941,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataCleaning(file, instructions);
+            // 确保AI数据清洗指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataCleaning(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -692,7 +965,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataTransformation(file, instructions);
+            // 确保AI数据转换指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataTransformation(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -714,7 +989,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataAnalysis(file, instructions);
+            // 确保AI数据分析指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataAnalysis(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -736,7 +1013,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartChartCreation(file, instructions);
+            // 确保AI图表创建指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartChartCreation(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(
@@ -758,7 +1037,9 @@ public class AiExcelController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("instructions") String instructions) {
         try {
-            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataValidation(file, instructions);
+            // 确保AI数据验证指令使用中文
+            String chineseInstructions = instructions + " Please respond in Chinese.";
+            Map<String, Object> result = aiAdvancedOperationsService.performSmartDataValidation(file, chineseInstructions);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             Map<String, Object> response = Map.of(

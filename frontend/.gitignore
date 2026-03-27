@@ -16,5 +16,5 @@ node_modules/
 dist/
 npm-debug.log
 yarn-error.log
-
+主页设计大纲.md
 # End of https://www.toptal.com/developers/gitignore/api/vue,vuejs

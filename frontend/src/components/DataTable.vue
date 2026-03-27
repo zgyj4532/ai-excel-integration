@@ -18,7 +18,7 @@
               <div style="position:relative; padding-right:18px">
                 <div>{{ h || $t('col_default', { n: ci+1 }) }}</div>
                 <div class="muted" style="font-size:11px">{{ colTypes[ci] === 'number' ? $t('type_number') : $t('type_text') }}</div>
-                <button class="col-remove" @click.prevent="removeColumn(ci)" aria-label="删除列">×</button>
+                <button class="col-remove" @click.prevent="removeColumn(ci)" :aria-label="$t('deleteColumnAria')">×</button>
               </div>
             </th>
           </tr>
@@ -37,8 +37,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 const props = defineProps<{ data: string[][], showExport?: boolean }>()
 const emit = defineEmits(['updateCell','updateData','export'])
+const { t } = useI18n()
 
 const header = computed(() => props.data[0] || [])
 const body = computed(() => props.data.slice(1))
@@ -65,7 +67,7 @@ function updateCell(r:number,c:number,value:string){
 function addColumn(){
   const newData = props.data.map((row,ri)=>{
     const copy = [...row]
-    if (ri===0) copy.push('NewCol')
+    if (ri===0) copy.push(t('newColumnDefault'))
     else copy.push('')
     return copy
   })

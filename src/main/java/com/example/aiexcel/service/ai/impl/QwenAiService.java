@@ -27,9 +27,9 @@ public class QwenAiService implements AiService {
 
     private static final Logger logger = Logger.getLogger(QwenAiService.class.getName());
 
-    private final String apiBaseUrl;
+    private volatile String apiBaseUrl;
     private final String defaultModel;
-    private final String apiKey;
+    private volatile String apiKey;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final CloseableHttpClient httpClient = HttpClients.createDefault();
@@ -50,44 +50,54 @@ public class QwenAiService implements AiService {
     public QwenAiService(@Value("${qwen.api.api-key:}") String apiKeyFromConfig,
                          @Value("${qwen.api.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}") String baseUrl,
                          @Value("${qwen.api.default-model:qwen-max}") String model) {
-        // 统一从 EnvFile 读取配置，EnvFile 会优先读取环境变量/系统属性
+        this.apiKey = resolveApiKey(apiKeyFromConfig);
+        this.apiBaseUrl = resolveBaseUrl(baseUrl);
+        this.defaultModel = EnvFile.getDefaultModel();
+    }
+
+    private String resolveApiKey(String fallback) {
         String resolvedKey = EnvFile.getApiKey();
         if (resolvedKey != null && !resolvedKey.isEmpty()) {
             logger.info("Qwen API key resolved from EnvFile");
-        } else if (apiKeyFromConfig != null && !apiKeyFromConfig.isEmpty()) {
-            resolvedKey = apiKeyFromConfig;
+        } else if (fallback != null && !fallback.isEmpty()) {
+            resolvedKey = fallback;
             logger.info("Qwen API key resolved from injected configuration property");
         }
 
-        this.apiKey = resolvedKey;
-        if (this.apiKey != null && !this.apiKey.isEmpty()) {
-            String trimmed = this.apiKey.trim();
+        if (resolvedKey != null && !resolvedKey.isEmpty()) {
+            String trimmed = resolvedKey.trim();
             if (!trimmed.startsWith("sk-")) {
                 logger.warning("Resolved API key does not start with 'sk-'. Ensure you are using a DashScope API key (sk-...).");
             }
         }
+        return resolvedKey;
+    }
 
-        // base url & model 也统一通过 EnvFile 获取，保留注入值作为回退
+    private String resolveBaseUrl(String fallback) {
         String resolvedBase = EnvFile.getBaseUrl();
         if (resolvedBase == null || resolvedBase.isEmpty()) {
-            resolvedBase = baseUrl != null ? baseUrl.trim() : null;
+            resolvedBase = fallback != null ? fallback.trim() : null;
         }
 
         boolean validBase = resolvedBase != null && resolvedBase.matches("^https?://[^/\\s]+.*$");
         if (!validBase) {
             String received = resolvedBase == null ? "<null>" : resolvedBase;
             logger.warning("qwen.api.base-url appears invalid: '" + received + "'. Falling back to default base URL.");
-            this.apiBaseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1";
-        } else {
-            this.apiBaseUrl = resolvedBase;
+            return "https://dashscope.aliyuncs.com/compatible-mode/v1";
         }
+        logger.info("qwen.api.base-url resolved to: " + resolvedBase);
+        return resolvedBase;
+    }
 
-        logger.info("qwen.api.base-url resolved to: " + this.apiBaseUrl);
-        this.defaultModel = EnvFile.getDefaultModel();
+    private void refreshRuntimeConfig() {
+        this.apiKey = resolveApiKey(this.apiKey);
+        this.apiBaseUrl = resolveBaseUrl(this.apiBaseUrl);
     }
 
     @Override
     public AiResponse generateResponse(AiRequest request) {
+        refreshRuntimeConfig();
+
         // 如果没有设置模型，使用默认模型
         if (request.getModel() == null || request.getModel().isEmpty()) {
             request.setModel(defaultModel);
@@ -193,12 +203,28 @@ public class QwenAiService implements AiService {
 
     @Override
     public Integer testConnection() {
+        refreshRuntimeConfig();
+
         // 如果没有配置 API Key，则不做请求，返回 null（表示未执行请求）
         if (apiKey == null || apiKey.isEmpty()) {
             logger.warning("API Key is not configured for connection test.");
             return null;
         }
+        return performProbe(apiKey, apiBaseUrl);
+    }
 
+    @Override
+    public Integer testConnectionWith(String apiKeyOverride, String baseUrlOverride) {
+        String key = (apiKeyOverride != null) ? apiKeyOverride.trim() : null;
+        String base = resolveBaseUrl(baseUrlOverride);
+        if (key == null || key.isEmpty()) {
+            logger.warning("testConnectionWith invoked without apiKey");
+            return null;
+        }
+        return performProbe(key, base);
+    }
+
+    private Integer performProbe(String key, String base) {
         try {
             // 构造一个极小的请求体用于检测状态码，不走 generateResponse 以避免抛出异常
             QwenRequest qwenRequest = new QwenRequest();
@@ -209,8 +235,8 @@ public class QwenAiService implements AiService {
             qwenRequest.setStream(false);
 
             String requestBody = objectMapper.writeValueAsString(qwenRequest);
-            HttpPost httpPost = new HttpPost(apiBaseUrl + "/chat/completions");
-            httpPost.setHeader("Authorization", "Bearer " + apiKey);
+            HttpPost httpPost = new HttpPost(base + "/chat/completions");
+            httpPost.setHeader("Authorization", "Bearer " + key);
             httpPost.setHeader("Content-Type", "application/json");
             httpPost.setEntity(new StringEntity(requestBody, ContentType.APPLICATION_JSON));
 

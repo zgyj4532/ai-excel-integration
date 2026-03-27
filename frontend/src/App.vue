@@ -20,7 +20,6 @@
         </router-link>
       </nav>
       <div style="margin-top:auto; display:flex; align-items:center; gap:8px">
-        <div style="font-size:12px" class="muted">{{ $t('prototype') }}</div>
         <div style="display:flex; gap:6px; margin-left:8px">
           <button @click="setLocale('zh')" :class="['lang-btn', locale==='zh' ? 'active' : '']">中</button>
           <button @click="setLocale('en')" :class="['lang-btn', locale==='en' ? 'active' : '']">EN</button>
@@ -81,23 +80,3 @@ function setLocale(l: string) {
 
 </script>
 
-<style scoped>
-.ai-excel-fab {
-  position: fixed;
-  right: 18px;
-  top: 18px;
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 18px rgba(3,30,14,0.12);
-  border-radius: 12px;
-  cursor: pointer;
-  z-index: 1200;
-  transition: transform .15s ease, box-shadow .15s ease;
-  background: transparent;
-}
-.ai-excel-fab svg { width: 48px; height: 48px; display: block; }
-.ai-excel-fab:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(3,30,14,0.18); }
-</style>

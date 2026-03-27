@@ -6,17 +6,20 @@ export async function uploadExcel(file: File) {
   return fetchJson('/api/upload', { method: 'POST', body: formData });
 }
 
-export async function processExcelWithAI(file: File, command: string) {
+export async function processExcelWithAI(file?: File | null, command?: string, fileId?: string) {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('command', command);
+  // if a File is available, prefer sending it to the backend (even when fileId exists)
+  if (file) formData.append('file', file as File);
+  if (command) formData.append('command', command);
+  if (fileId) formData.append('fileId', fileId);
   return fetchJson('/api/ai/excel-with-ai', { method: 'POST', body: formData });
 }
 
-export async function processExcelWithAIDownload(file: File, command: string) {
+export async function processExcelWithAIDownload(file?: File | null, command?: string, fileId?: string) {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('command', command);
+  if (file) formData.append('file', file as File);
+  if (command) formData.append('command', command);
+  if (fileId) formData.append('fileId', fileId);
   const base = await (await import('./apiClient')).getApiBaseUrl();
   const url = `${base}/api/ai/excel-with-ai-download`;
   const resp = await fetch(url, { method: 'POST', body: formData, headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
@@ -75,12 +78,15 @@ export async function chatSse(message: string) {
   return { text };
 }
 
-export async function createChart(file: File, chartType: string, targetColumn: string) {
+export async function createChart(file?: File | null, chartType?: string, targetColumn?: string, fileId?: string) {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('chartType', chartType);
-  formData.append('targetColumn', targetColumn);
-  return fetchJson('/api/excel/create-chart', { method: 'POST', body: formData });
+  // prefer sending file bytes when available
+  if (file) formData.append('file', file as File)
+  // if no file but fileId provided, send fileId so backend can load cached file
+  if (!file && fileId) formData.append('fileId', fileId)
+  if (chartType) formData.append('chartType', chartType)
+  if (targetColumn) formData.append('targetColumn', targetColumn)
+  return fetchJson('/api/excel/create-chart', { method: 'POST', body: formData })
 }
 
 export async function sortData(file: File, sortColumn: string, sortOrder: string) {
@@ -99,6 +105,49 @@ export async function filterData(file: File, filterColumn: string, filterValue: 
   return fetchJson('/api/excel/filter-data', { method: 'POST', body: formData });
 }
 
+export async function analyzeFinancial(file: File, type = 'comprehensive') {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (type) formData.append('type', type)
+  return fetchJson('/api/analysis/financial', { method: 'POST', body: formData })
+}
+
+export async function analyzeFinancialRatios(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/financial-ratios', { method: 'POST', body: formData })
+}
+
+export async function analyzeProfitability(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/profitability', { method: 'POST', body: formData })
+}
+
+export async function analyzeCashFlow(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/cash-flow', { method: 'POST', body: formData })
+}
+
+export async function analyzeBudgetActual(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/budget-actual', { method: 'POST', body: formData })
+}
+
+export async function analyzeRfm(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/rfm', { method: 'POST', body: formData })
+}
+
+export async function analyzeClv(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchJson('/api/analysis/clv', { method: 'POST', body: formData })
+}
+
 export async function chat(message: string) {
   return fetchJson('/api/ai/chat', {
     method: 'POST',
@@ -108,11 +157,12 @@ export async function chat(message: string) {
 }
 
 // Combines data preview and AI processing:
-export async function processExcelAndChat(file: File, command: string) {
+export async function processExcelAndChat(file?: File | null, command?: string, fileId?: string) {
   // 1) get parsed array preview via data analysis API
   let preview: any = null
   try {
-    preview = await getExcelDataPreview(file)
+    if (file) preview = await getExcelDataPreview(file)
+    else preview = null
   } catch (e) {
     preview = null
   }
@@ -120,7 +170,7 @@ export async function processExcelAndChat(file: File, command: string) {
   // 2) send file + command to ai/excel-with-ai (this returns ai response + commandResults etc.)
   let aiResp: any = null
   try {
-    aiResp = await processExcelWithAI(file, command)
+    aiResp = await processExcelWithAI(file, command, fileId)
   } catch (e) {
     // rethrow so caller can show error; attach preview if available
     (e as any).preview = preview

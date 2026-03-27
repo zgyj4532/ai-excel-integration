@@ -36,7 +36,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
             "This is financial data:\n\n%s\n\n" +
             "Perform %s financial statement analysis. " +
             "Analyze key financial metrics, trends, and performance indicators. " +
-            "Provide insights on the financial health of the business and recommendations for improvement.",
+            "Provide insights on the financial health of the business and recommendations for improvement. " +
+            "Please respond in Chinese.",
             excelData, analysisType
         );
 
@@ -49,7 +50,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
                 "For Income Statement: focus on revenue growth, cost control, and profitability. " +
                 "For Balance Sheet: focus on liquidity, leverage, and asset utilization. " +
                 "For Cash Flow Statement: focus on operating cash flow, investment needs, and financing activities. " +
-                "Provide actionable insights and recommendations."),
+                "Provide actionable insights and recommendations. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -84,7 +86,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
             "3. Leverage ratios (Debt-to-Equity, Debt Ratio) " +
             "4. Efficiency ratios (Inventory Turnover, Asset Turnover) " +
             "5. Market ratios (if applicable) " +
-            "Provide calculations, interpretations, and benchmark comparisons.",
+            "Provide calculations, interpretations, and benchmark comparisons. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -107,7 +110,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
                 "- Asset Turnover = Revenue / Average Total Assets\n" +
                 "- Inventory Turnover = Cost of Goods Sold / Average Inventory\n\n" +
                 "Provide interpretations of what each ratio indicates about the company's performance " +
-                "and how they compare to industry benchmarks."),
+                "and how they compare to industry benchmarks. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -139,7 +143,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
             "Perform comprehensive profitability analysis. " +
             "Analyze gross profit, operating profit, and net profit margins. " +
             "Identify key drivers of profitability and areas for improvement. " +
-            "Compare profitability across time periods or business segments.",
+            "Compare profitability across time periods or business segments. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -157,7 +162,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
                 "- Product/service mix\n\n" +
                 "Identify areas of improvement such as cost reduction opportunities, " +
                 "pricing strategies, or operational optimizations. " +
-                "Compare current profitability to historical performance and industry benchmarks."),
+                "Compare current profitability to historical performance and industry benchmarks. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -189,7 +195,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
             "Perform comprehensive cash flow analysis. " +
             "Analyze operating, investing, and financing cash flows. " +
             "Evaluate cash flow trends, sustainability, and adequacy for business operations. " +
-            "Identify potential cash flow issues and provide recommendations.",
+            "Identify potential cash flow issues and provide recommendations. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -206,7 +213,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
                 "- Cash flow to debt ratios\n" +
                 "- Seasonal patterns in cash flow\n" +
                 "- Days Sales Outstanding, Days Payable Outstanding, Days Inventory Outstanding\n\n" +
-                "Identify potential liquidity issues and recommend cash management strategies."),
+                "Identify potential liquidity issues and recommend cash management strategies. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
@@ -238,7 +246,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
             "Perform budget vs actual variance analysis. " +
             "Calculate variances for key line items (revenue, costs, expenses). " +
             "Determine whether variances are favorable or unfavorable. " +
-            "Provide explanations for significant variances and recommendations for future budgeting.",
+            "Provide explanations for significant variances and recommendations for future budgeting. " +
+            "Please respond in Chinese.",
             excelData
         );
 
@@ -257,7 +266,8 @@ public class FinancialAnalysisServiceImpl implements FinancialAnalysisService {
                 "- Negative variance = favorable (less costs than budgeted)\n\n" +
                 "Analyze significant variances (typically >5% or >absolute threshold), " +
                 "provide potential causes, and recommend corrective actions. " +
-                "Also suggest improvements to budgeting process based on variance patterns."),
+                "Also suggest improvements to budgeting process based on variance patterns. " +
+                "Please respond in Chinese."),
             new AiRequest.Message("user", prompt)
         ));
 
