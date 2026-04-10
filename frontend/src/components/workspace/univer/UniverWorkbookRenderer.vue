@@ -5,19 +5,15 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted } from 'vue'
 import { loadUniverRuntime } from './univerRuntime'
 
 const emit = defineEmits<{ (e: 'ready', payload: { univerAPI: any }): void }>()
 
 const containerId = 'univer-table-container'
-const loading = ref(false)
 let disposeUniver: (() => void) | null = null
 
 onMounted(async () => {
-  if (loading.value) return
-  loading.value = true
-
   try {
     const {
       FUniver,
@@ -28,7 +24,7 @@ onMounted(async () => {
       LocaleType,
       mergeLocales,
       greenTheme,
-      UniverVue3AdapterPlugin
+      UniverVue3AdapterPlugin,
     } = await loadUniverRuntime()
 
     const univer = new Univer({
@@ -36,27 +32,27 @@ onMounted(async () => {
       darkMode: true,
       theme: greenTheme,
       locales: {
-        [LocaleType.ZH_CN]: mergeLocales(UniverPresetSheetsCoreZhCN)
+        [LocaleType.ZH_CN]: mergeLocales(UniverPresetSheetsCoreZhCN),
       },
       presets: [
         UniverSheetsCorePreset({
           container: containerId,
           formula: {
-            initialFormulaComputing: CalculationMode.FORCED
-          }
-        })
-      ]
-    })
+            initialFormulaComputing: CalculationMode.FORCED,
+          },
+        }),
+      ],
+    } as any)
 
     univer.registerPlugin(UniverVue3AdapterPlugin)
+
     const univerAPI = FUniver.newAPI(univer)
     univerAPI.createWorkbook({})
+
     emit('ready', { univerAPI })
     disposeUniver = () => univer.dispose()
   } catch (error) {
     console.error('Failed to initialize Univer:', error)
-  } finally {
-    loading.value = false
   }
 })
 

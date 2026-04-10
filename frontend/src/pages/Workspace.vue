@@ -159,7 +159,7 @@ function renderTableToUniver() {
     const data = tableData.value && tableData.value.length ? tableData.value : [['']]
     const snapshot = tableToSnapshot(data, makeId('workbook-preview'))
     ops.createWorkbook(snapshot)
-    const engine = ops.getFormulaEngine?.()
+    const engine = ops?.getFormulaEngine?.()
     engine?.executeCalculation?.()
   } catch (e) {
     console.warn('renderTableToUniver failed', e)
