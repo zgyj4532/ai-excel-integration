@@ -1,91 +1,48 @@
 <template>
   <div style="padding:16px">
-    <!-- workspace grid: left column contains topbar(row1) + preview(row2); right column is sidebar -->
     <div class="workspace-grid">
       <div class="topbar">
-            <div class="muted">{{ $t('currentFile') }} {{ fileName || $t('noFile') }}</div>
-            <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-              <button class="new-chat-btn" @click="newChat" :title="t('newChat')" :aria-label="t('newChat')">
-                <span class="new-chat-circle" aria-hidden="true">
-                  <svg class="new-chat-plus" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img"
-                    aria-hidden="true">
-                    <line x1="12" y1="5" x2="12" y2="19" stroke="#179078" stroke-width="2" stroke-linecap="round" />
-                    <line x1="5" y1="12" x2="19" y2="12" stroke="#179078" stroke-width="2" stroke-linecap="round" />
-                  </svg>
-                </span>
-                <span class="new-chat-label">{{ t('newChat') }}</span>
-              </button>
-              
-            </div>
-            <!-- Error banner with retry -->
-            <div v-if="lastError" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-              <div style="color:#ffcccc; background:rgba(255,0,0,0.06); padding:8px; border-radius:6px; flex:1">{{ lastError }}</div>
-              <button class="btn" @click="retryLastCommand" v-if="failedCommand">{{ t('retry') || '重试' }}</button>
-            </div>
-          </div>
-      <section class="preview card" style="flex:1; min-width:0; height:100%;">
-        <div
-          style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.03)">
-          <div style="display:flex; gap:8px">
-            <button :class="['tab-btn', activeTab === 'overview' ? 'active' : '']" @click="activeTab = 'overview'">{{
-              $t('dataPreview') }}</button>
-            <button :class="['tab-btn', activeTab === 'analysis' ? 'active' : '']" @click="activeTab = 'analysis'">{{
-              $t('analysis') }}</button>
-            <button :class="['tab-btn', activeTab === 'templates' ? 'active' : '']" @click="activeTab = 'templates'">{{
-              $t('templates') }}</button>
-          </div>
-          <button
-            class="save-btn"
-            :disabled="!hasFile || saving"
-            @click="handleSaveClick"
-            :title="$t('saveFile')"
-            :aria-label="$t('saveFile')"
-          >
-            <svg class="save-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M6 3h11l3 3v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
-              <path d="M14 3v5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3" fill="none" stroke="currentColor" stroke-width="1.6"/>
-              <path d="M15 17H9m0-3h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-            <span>{{ saving ? $t('saving') : $t('saveFile') }}</span>
-          </button>
-        </div>
+        <WorkspaceHeader
+            :file-name="fileName"
+            :last-error="lastError"
+            :failed-command="failedCommand"
+          @new-chat="newChat"
+          @retry="retryLastCommand"
+        />
+      </div>
 
-        <div style="padding:16px">
-          <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
-          <div v-show="activeTab === 'overview'">
-            <h4 style="margin-top:0">{{ $t('dataPreview') }}</h4>
-            <div v-if="hasFile" class="univer-wrapper">
-              <UniverTable @ready="handleUniverReady" />
-            </div>
-            <div v-else class="empty-upload">
-              <div class="empty-upload-text">{{ $t('workspaceNoUploadTip') }}</div>
-            </div>
-          </div>
+      <WorkspaceTabs
+        v-model:activeTab="activeTab"
+        :has-file="hasFile"
+        :saving="saving"
+        :save-message="saveMessage"
+        @save="handleSaveClick"
+      >
+        <template #overview>
+          <WorkspaceOverviewTab :has-file="hasFile" @ready="handleUniverReady" />
+        </template>
 
-          <div v-show="activeTab === 'analysis'">
-            <Analysis :saved-file-id="lastSavedFileId" :last-file="lastFile" />
-          </div>
+        <template #analysis>
+          <WorkspaceAnalysisTab :saved-file-id="lastSavedFileId" :last-file="lastFile" />
+        </template>
 
-          <div v-show="activeTab === 'templates'">
-            <Templates @template-response="onTemplateResponse" />
-          </div>
-        </div>
-      </section>
+        <template #templates>
+          <WorkspaceTemplatesTab @template-response="onTemplateResponse" />
+        </template>
+      </WorkspaceTabs>
+
       <aside class="right" style="width:420px; display:flex; flex-direction:column; gap:12px; height:100%;">
-        <div class="card" style="display:flex; flex-direction:column; gap:12px;">
-          <div v-if="showUploader" style="display:flex; flex-direction:column; gap:12px;">
-            <FileUploader :snapshotOps="snapshotOps" @fileLoaded="onFileLoaded" />
-          </div>
-          <!-- Chat box: AI stream + steps (shown after run) -->
-          <div class="chat-box" style="display:flex; flex-direction:column; gap:8px;">
-            <div v-if="aiActive" style="display:flex; flex-direction:column; gap:8px;">
-                <div class="ai-stream-container">
-                  <ChatBubbleList :messages="aiMessages" :executingIds="executingIds" :appliedIds="appliedIds" :snapshot-ops="snapshotOps" @apply-token="handleApplyToken" @skip-token="handleSkipToken" />
-                </div>
-              <!-- steps are included inside aiMessages as a single card message -->
-            </div>
-          </div>
-        </div>
+        <WorkspaceSidebarPanel
+          :show-uploader="showUploader"
+          :ai-active="aiActive"
+          :ai-messages="aiMessages"
+          :executing-ids="executingIds"
+          :applied-ids="appliedIds"
+          :snapshot-ops="snapshotOps"
+          @file-loaded="onFileLoaded"
+          @apply-token="handleApplyToken"
+          @skip-token="handleSkipToken"
+        />
         <!-- Floating AI command input (aligned inside right sidebar) -->
         <div class="floating-ai-input">
           <ChatInput ref="aiInput" @send="onRunCommand" />
@@ -98,19 +55,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, onMounted, watch, computed } from 'vue'
-import { CalculationMode } from '@univerjs/preset-sheets-core'
+import { defineAsyncComponent, ref, shallowRef, onMounted, watch, computed } from 'vue'
 import * as XLSX from 'xlsx'
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader.vue'
+import WorkspaceTabs from '@/components/workspace/WorkspaceTabs.vue'
+import WorkspaceSidebarPanel from '@/components/workspace/WorkspaceSidebarPanel.vue'
 import { useI18n } from 'vue-i18n'
-import FileUploader from '../components/FileUploader.vue'
 import FileDownloader from '../components/FileDownloader.vue'
-import UniverTable from '../components/UniverTable.vue'
-import ChatBubbleList from '../components/ChatBubbleList.vue'
 import ChatInput from '../components/ChatInput.vue'
-import Analysis from './Analysis.vue'
-import Templates from './Templates.vue'
 import { getExcelDataPreview, processExcelWithAI, processExcelAndChat, uploadExcel, chat, runAllApis } from '../services/aiService'
 import { handleUserChat } from '../services/chatManager'
+
+const WorkspaceOverviewTab = defineAsyncComponent(() => import('@/components/workspace/tabs/WorkspaceOverviewTab.vue'))
+const WorkspaceAnalysisTab = defineAsyncComponent(() => import('@/components/workspace/tabs/WorkspaceAnalysisTab.vue'))
+const WorkspaceTemplatesTab = defineAsyncComponent(() => import('@/components/workspace/tabs/WorkspaceTemplatesTab.vue'))
 
 const fileName = ref('')
 const tableData = ref<Array<string[]>>([])
@@ -142,6 +100,11 @@ type SnapshotOps = {
   createWorkbook?: (snapshot?: any) => any
   getActiveWorkbook?: () => any
   getFormulaEngine?: () => any
+}
+
+type ExpressionToken = {
+  type: 'number' | 'operator'
+  value: string
 }
 
 const snapshotOps = shallowRef<SnapshotOps | null>(null)
@@ -462,6 +425,156 @@ onMounted(() => { loadFromStorage(); renderTableToUniver() })
 
 function colLetterToIndex(letters: string) { let n = 0; for (let i = 0; i < letters.length; i++) { n = n * 26 + (letters.charCodeAt(i) - 64) } return n - 1 }
 function colIndexToLetter(idx: number) { let n = idx + 1; let s = ''; while (n > 0) { const rem = (n - 1) % 26; s = String.fromCharCode(65 + rem) + s; n = Math.floor((n - 1) / 26) } return s }
+function tokenizeExpression(expr: string) {
+  const normalized = String(expr || '').replace(/[＝，]/g, '').trim()
+  const tokens: Array<{ type: 'number' | 'operator' | 'paren'; value: string }> = []
+  let index = 0
+
+  while (index < normalized.length) {
+    const char = normalized[index]
+    if (/\s/.test(char)) {
+      index += 1
+      continue
+    }
+
+    if (/[0-9.]/.test(char)) {
+      let end = index + 1
+      while (end < normalized.length && /[0-9.]/.test(normalized[end])) end += 1
+      tokens.push({ type: 'number', value: normalized.slice(index, end) })
+      index = end
+      continue
+    }
+
+    if (char === '(' || char === ')') {
+      tokens.push({ type: 'paren', value: char })
+      index += 1
+      continue
+    }
+
+    if ('+-*/%^'.includes(char)) {
+      const previous = tokens[tokens.length - 1]
+      const isUnaryMinus = char === '-' && (!previous || (previous.type === 'operator' || (previous.type === 'paren' && previous.value === '(')))
+      if (isUnaryMinus) {
+        let end = index + 1
+        while (end < normalized.length && /\s/.test(normalized[end])) end += 1
+        let numberEnd = end
+        while (numberEnd < normalized.length && /[0-9.]/.test(normalized[numberEnd])) numberEnd += 1
+        if (numberEnd > end) {
+          tokens.push({ type: 'number', value: `-${normalized.slice(end, numberEnd)}` })
+          index = numberEnd
+          continue
+        }
+        tokens.push({ type: 'number', value: '-0' })
+        tokens.push({ type: 'operator', value: '-' })
+        index += 1
+        continue
+      }
+
+      tokens.push({ type: 'operator', value: char })
+      index += 1
+      continue
+    }
+
+    return null
+  }
+
+  return tokens
+}
+
+function applyOperator(left: number, right: number, operator: string) {
+  switch (operator) {
+    case '+': return left + right
+    case '-': return left - right
+    case '*': return left * right
+    case '/': return right === 0 ? NaN : left / right
+    case '%': return right === 0 ? NaN : left % right
+    case '^': return Math.pow(left, right)
+    default: return NaN
+  }
+}
+
+function getOperatorPrecedence(operator: string) {
+  switch (operator) {
+    case '^': return 4
+    case '*':
+    case '/':
+    case '%': return 3
+    case '+':
+    case '-': return 2
+    default: return 0
+  }
+}
+
+function isRightAssociative(operator: string) {
+  return operator === '^'
+}
+
+function evaluateExpression(expr: string) {
+  const tokens = tokenizeExpression(expr)
+  if (!tokens) return ''
+
+  const output: ExpressionToken[] = []
+  const operatorStack: string[] = []
+
+  for (const token of tokens) {
+    if (token.type === 'number') {
+      output.push({ type: 'number', value: token.value })
+      continue
+    }
+
+    if (token.type === 'operator') {
+      while (operatorStack.length > 0) {
+        const last = operatorStack[operatorStack.length - 1]
+        if (last === '(') break
+        const lastPrecedence = getOperatorPrecedence(last)
+        const currentPrecedence = getOperatorPrecedence(token.value)
+        if (lastPrecedence > currentPrecedence || (lastPrecedence === currentPrecedence && !isRightAssociative(token.value))) {
+          output.push({ type: 'operator', value: operatorStack.pop() as string })
+          continue
+        }
+        break
+      }
+      operatorStack.push(token.value)
+      continue
+    }
+
+    if (token.value === '(') {
+      operatorStack.push(token.value)
+      continue
+    }
+
+    while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1] !== '(') {
+      output.push({ type: 'operator', value: operatorStack.pop() as string })
+    }
+    if (operatorStack.pop() !== '(') return ''
+  }
+
+  while (operatorStack.length > 0) {
+    const operator = operatorStack.pop() as string
+    if (operator === '(') return ''
+    output.push({ type: 'operator', value: operator })
+  }
+
+  const valueStack: number[] = []
+  for (const token of output) {
+    if (token.type === 'number') {
+      const value = Number(token.value)
+      if (Number.isNaN(value)) return ''
+      valueStack.push(value)
+      continue
+    }
+
+    const right = valueStack.pop()
+    const left = valueStack.pop()
+    if (left === undefined || right === undefined) return ''
+    const result = applyOperator(left, right, token.value)
+    if (!Number.isFinite(result)) return ''
+    valueStack.push(result)
+  }
+
+  return valueStack.length === 1 ? valueStack[0] : ''
+}
+
 function evalFormula(expr: string, grid: string[][]) {
   const replaced = expr.replace(/([A-Z]+\d+)/g, (m) => {
     const col = colLetterToIndex(m.replace(/\d+/, ''))
@@ -469,9 +582,7 @@ function evalFormula(expr: string, grid: string[][]) {
     const v = (grid[row - 1] && grid[row - 1][col]) || '0'
     return String(Number(v) || 0)
   })
-  try { // @ts-ignore
-    return eval(replaced.replace(/[＝，]/g, ''))
-  } catch (e) { return '' }
+  return evaluateExpression(replaced)
 }
 
 function getRangeValues(range: string) {
@@ -890,7 +1001,8 @@ async function handleApply(cmd: string, id?: number) {
   }
 }
 
-async function handleApplyToken(token: string, tokenKey: string, msgId?: number, idx?: number) {
+async function handleApplyToken(token: string, msgId?: number, idx?: number) {
+  const tokenKey = `${typeof msgId === 'number' ? msgId : Date.now()}-${typeof idx === 'number' ? idx : 0}`
   if (!tokenKey) return
   if (!executingIds.value.includes(tokenKey)) executingIds.value.push(tokenKey)
   if (!appliedIds.value.includes(tokenKey)) appliedIds.value.push(tokenKey)

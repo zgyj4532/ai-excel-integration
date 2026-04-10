@@ -5,136 +5,49 @@
     </div>
 
     <div class="content">
-      <!-- 第一行：图表建议（横向平铺） -->
       <div class="row row-first">
-        <div class="card charts-row">
-          <div class="card-header">
-            <h4>{{ $t('chartSuggestionsTitle') }}</h4>
-            <p class="muted">{{ $t('chartSuggestionsDesc') }}</p>
-          </div>
-
-          <div class="data-range-row">
-            <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('dataRangeLabel') }}</label>
-            <input
-              v-model="dataRangeInput"
-              @input="onDataRangeInput"
-              class="range-input"
-              :placeholder="$t('dataRangePlaceholder')"
-            />
-            <span class="range-hint">{{ $t('rangeHint') }}</span>
-            <span v-if="rangeError" class="range-error">{{ rangeError }}</span>
-          </div>
-
-          <div class="chart-suggestions-grid horizontal">
-            <div class="chart-suggestion-item">
-              <h5>{{ $t('chart_line') }}</h5>
-              <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">{{ $t('dataRangeLabel') }}：{{ dataRangeInput || $t('rangeNotDetected') }}</div>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('targetColumnLabel') }}</label>
-                  <select v-model="selectedColumnLine">
-                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || $t('col_default', { n: idx + 1 }) }}</option>
-                  </select>
-                </div>
-                <div style="display:flex;gap:8px;">
-                  <button @click="onCreateChart('line', selectedColumnLine)" class="generate-report-btn" :disabled="!savedFile">{{ $t('createChartBtn') }}</button>
-                </div>
-                <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
-                  <canvas ref="lineCanvasRef" class="chart-canvas"></canvas>
-                  <div v-if="chartInstructionsTextLine" class="chart-instructions">{{ chartInstructionsTextLine }}</div>
-                </div>
-              </div>
-            </div>
-            <div class="chart-suggestion-item">
-              <h5>{{ $t('chart_pie') }}</h5>
-              <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">{{ $t('dataRangeLabel') }}：{{ dataRangeInput || $t('rangeNotDetected') }}</div>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('targetColumnLabel') }}</label>
-                  <select v-model="selectedColumnPie">
-                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || $t('col_default', { n: idx + 1 }) }}</option>
-                  </select>
-                </div>
-                <div style="display:flex;gap:8px;">
-                  <button @click="onCreateChart('pie', selectedColumnPie)" class="generate-report-btn" :disabled="!savedFile">{{ $t('createChartBtn') }}</button>
-                </div>
-                <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
-                  <canvas ref="pieCanvasRef" class="chart-canvas"></canvas>
-                  <div v-if="chartInstructionsTextPie" class="chart-instructions">{{ chartInstructionsTextPie }}</div>
-                </div>
-              </div>
-            </div>
-            <div class="chart-suggestion-item">
-              <h5>{{ $t('chart_top') }}</h5>
-              <div class="chart-placeholder" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                <div style="font-size:12px;color:rgba(200,210,220,0.7)">{{ $t('dataRangeLabel') }}：{{ dataRangeInput || $t('rangeNotDetected') }}</div>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <label style="font-size:12px;color:rgba(230,238,248,0.7)">{{ $t('targetColumnLabel') }}</label>
-                  <select v-model="selectedColumnBar">
-                    <option v-for="(h,idx) in sheetHeaders" :key="idx" :value="h">{{ h || $t('col_default', { n: idx + 1 }) }}</option>
-                  </select>
-                </div>
-                <div style="display:flex;gap:8px;">
-                  <button @click="onCreateChart('bar', selectedColumnBar)" class="generate-report-btn" :disabled="!savedFile">{{ $t('createChartBtn') }}</button>
-                </div>
-                <div style="margin-top:6px;color:rgba(230,238,248,0.9);font-size:13px;">
-                  <canvas ref="barCanvasRef" class="chart-canvas"></canvas>
-                  <div v-if="chartInstructionsTextBar" class="chart-instructions">{{ chartInstructionsTextBar }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AnalysisChartSection
+          ref="analysisChartSectionRef"
+          :data-range-input="dataRangeInput"
+          :range-error="rangeError"
+          :saved-file="!!savedFile"
+          :sheet-headers="sheetHeaders"
+          :selected-column-line="selectedColumnLine"
+          :selected-column-pie="selectedColumnPie"
+          :selected-column-bar="selectedColumnBar"
+          :chart-instructions-text-line="chartInstructionsTextLine"
+          :chart-instructions-text-pie="chartInstructionsTextPie"
+          :chart-instructions-text-bar="chartInstructionsTextBar"
+          @input="onDataRangeInput"
+          @create-chart="onCreateChart"
+          @update:selectedColumnLine="selectedColumnLine = $event"
+          @update:selectedColumnPie="selectedColumnPie = $event"
+          @update:selectedColumnBar="selectedColumnBar = $event"
+        />
       </div>
 
-      <!-- 第二行：自动报告（占满宽度，高度720px） -->
-        <div class="row row-second">
-          <div class="card auto-report-card" :class="{ generated: reportGenerated }">
-            <h4>{{ $t('autoReportTitle') }}</h4>
-            <p class="muted">{{ $t('autoReportDesc') }}</p>
-            <div class="report-actions">
-              <div class="report-buttons">
-                <button
-                  @click="onGenerateReportClick"
-                  class="generate-report-btn"
-                  :disabled="reportGenerating || downloadInProgress"
-                >{{ reportGenerating ? '信息生成中...' : $t('generateReportBtn') }}</button>
-                <button @click="onLoadApiExample" class="generate-report-btn" style="margin-left:8px">{{ $t('loadApiExample') }}</button>
-                <button
-                  v-if="reportGenerated"
-                  @click="onDownloadReport"
-                  class="generate-report-btn download-report-btn"
-                  :disabled="reportGenerating || downloadInProgress"
-                >{{ downloadInProgress ? '下载中，请稍后' : '下载报告' }}</button>
-              </div>
-              <div class="report-options">
-                <span class="options-label">{{ $t('optionalAnalyses') }}</span>
-                <label><input type="checkbox" v-model="includeFinancialRatios" />{{ $t('includeFinancialRatios') }}</label>
-                <label><input type="checkbox" v-model="includeProfitability" />{{ $t('includeProfitability') }}</label>
-                <label><input type="checkbox" v-model="includeCashFlow" />{{ $t('includeCashFlow') }}</label>
-                <label><input type="checkbox" v-model="includeBudgetActual" />{{ $t('includeBudgetActual') }}</label>
-                <label><input type="checkbox" v-model="includeRfm" />{{ $t('includeRfm') }}</label>
-                <label><input type="checkbox" v-model="includeClv" />{{ $t('includeClv') }}</label>
-              </div>
-            </div>
-
-            <!-- 报告主体：未生成时高度 160px；生成后根据内容测量高度；当内容高度 > 720px 时启用滚动（鼠标滚轮预览） -->
-            <div
-              class="auto-report-body"
-              :style="{
-                height: reportGenerated ? 'auto' : '160px',
-                maxHeight: reportGenerated ? '720px' : '160px',
-                overflowY: reportGenerated ? 'auto' : 'hidden'
-              }"
-            >
-              <div v-if="!reportGenerated" class="report-placeholder">
-                {{ $t('reportPlaceholder') }}
-              </div>
-              <div v-else class="report-content">
-                <XMarkdown :markdown="reportMarkdown" :highlight="true" />
-              </div>
-            </div>
-          </div>
+      <div class="row row-second">
+        <AnalysisReportSection
+          :report-generated="reportGenerated"
+          :report-generating="reportGenerating"
+          :download-in-progress="downloadInProgress"
+          :report-markdown="reportMarkdown"
+          :include-financial-ratios="includeFinancialRatios"
+          :include-profitability="includeProfitability"
+          :include-cash-flow="includeCashFlow"
+          :include-budget-actual="includeBudgetActual"
+          :include-rfm="includeRfm"
+          :include-clv="includeClv"
+          @generate-report="onGenerateReportClick"
+          @load-api-example="onLoadApiExample"
+          @download-report="onDownloadReport"
+          @update:includeFinancialRatios="includeFinancialRatios = $event"
+          @update:includeProfitability="includeProfitability = $event"
+          @update:includeCashFlow="includeCashFlow = $event"
+          @update:includeBudgetActual="includeBudgetActual = $event"
+          @update:includeRfm="includeRfm = $event"
+          @update:includeClv="includeClv = $event"
+        />
         </div>
 
       <!-- 第三行：RFM / CLV / 财务，三列等分 -->
@@ -162,13 +75,11 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
+import { defineAsyncComponent, ref, nextTick, onMounted, watch } from 'vue'
 import { getAnalysisCenterData } from '@/services/api'
-import { ref, nextTick, onMounted, watch } from 'vue'
-import { XMarkdown } from 'vue-element-plus-x'
 import * as XLSX from 'xlsx'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+const AnalysisChartSection = defineAsyncComponent(() => import('@/components/analysis/AnalysisChartSection.vue'))
+const AnalysisReportSection = defineAsyncComponent(() => import('@/components/analysis/AnalysisReportSection.vue'))
 import {
   analyzeBudgetActual,
   analyzeCashFlow,
@@ -180,6 +91,8 @@ import {
   getExcelDataPreview,
   analyzeExcelData
 } from '@/services/aiService'
+
+import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const props = defineProps<{ savedFileId?: string | null; lastFile?: File | null }>()
@@ -204,9 +117,7 @@ const chartInstructionsTextLine = ref('')
 const chartInstructionsTextPie = ref('')
 const chartInstructionsTextBar = ref('')
 const dataMatrix = ref<any[][]>([])
-const lineCanvasRef = ref<HTMLCanvasElement | null>(null)
-const pieCanvasRef = ref<HTMLCanvasElement | null>(null)
-const barCanvasRef = ref<HTMLCanvasElement | null>(null)
+const analysisChartSectionRef = ref<any>(null)
 const canvasHeight = 220
 const lastLoadedFileToken = ref('')
 const includeFinancialRatios = ref(false)
@@ -618,9 +529,14 @@ async function onCreateChart(chartType: string, targetColumn: string) {
     return
   }
 
-  if (chartType === 'line' && lineCanvasRef.value) drawLine(lineCanvasRef.value, labels, values)
-  if (chartType === 'pie' && pieCanvasRef.value) drawPie(pieCanvasRef.value, labels, values)
-  if (chartType === 'bar' && barCanvasRef.value) drawBar(barCanvasRef.value, labels, values)
+  const chartSection = analysisChartSectionRef.value
+  const lineCanvas = chartSection?.lineCanvasRef?.value as HTMLCanvasElement | null | undefined
+  const pieCanvas = chartSection?.pieCanvasRef?.value as HTMLCanvasElement | null | undefined
+  const barCanvas = chartSection?.barCanvasRef?.value as HTMLCanvasElement | null | undefined
+
+  if (chartType === 'line' && lineCanvas) drawLine(lineCanvas, labels, values)
+  if (chartType === 'pie' && pieCanvas) drawPie(pieCanvas, labels, values)
+  if (chartType === 'bar' && barCanvas) drawBar(barCanvas, labels, values)
 
   const successMsg = chartType === 'line'
     ? t('chartGeneratedLine', { column: targetColumn })
@@ -720,6 +636,10 @@ async function onDownloadReport() {
   }
   downloadInProgress.value = true
   try {
+    const [{ default: html2canvas }, { default: JsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf')
+    ])
     const card = document.querySelector('.auto-report-card') as HTMLElement | null
     const bgColor = '#19202C'
     const headings = Array.from(el.querySelectorAll('h3')) as HTMLElement[]
@@ -752,7 +672,7 @@ async function onDownloadReport() {
     staging.style.background = bgColor
     document.body.appendChild(staging)
 
-    const pdf = new jsPDF('p', 'pt', 'a4')
+    const pdf = new JsPDF('p', 'pt', 'a4')
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
     const margin = 20

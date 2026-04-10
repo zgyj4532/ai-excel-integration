@@ -1,16 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Landing from '../pages/Landing.vue'
-import Workspace from '../pages/Workspace.vue'
-import Analysis from '../pages/Analysis.vue'
-import Templates from '../pages/Templates.vue'
-import Settings from '../pages/Settings.vue'
 
 const routes = [
-  { path: '/', name: 'Landing', component: Landing },
-  { path: '/workspace', name: 'Workspace', component: Workspace },
-  { path: '/analysis', name: 'Analysis', component: Analysis },
-  { path: '/templates', name: 'Templates', component: Templates },
-  { path: '/settings', name: 'Settings', component: Settings }
+  { path: '/', name: 'Landing', component: () => import('../pages/Landing.vue') },
+  { path: '/workspace', name: 'Workspace', component: () => import('../pages/Workspace.vue') },
+  { path: '/analysis', name: 'Analysis', component: () => import('../pages/Analysis.vue') },
+  { path: '/templates', name: 'Templates', component: () => import('../pages/Templates.vue') },
+  { path: '/settings', name: 'Settings', component: () => import('../pages/Settings.vue') }
 ]
 
 export const router = createRouter({
