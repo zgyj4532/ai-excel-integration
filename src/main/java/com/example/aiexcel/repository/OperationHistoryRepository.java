@@ -45,4 +45,9 @@ public interface OperationHistoryRepository extends JpaRepository<OperationHisto
      * 获取最新的一条操作记录
      */
     OperationHistory findFirstByFileIdOrderByCreatedAtDesc(String fileId);
+
+    /**
+     * 获取最近一条被撤销的操作（用于重做）
+     */
+    OperationHistory findFirstByFileIdAndUndoneTrueOrderByCreatedAtDesc(String fileId);
 }

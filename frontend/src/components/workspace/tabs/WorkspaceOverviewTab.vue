@@ -42,13 +42,13 @@ defineEmits<{
 
 .empty-upload {
   height: 610px;
-  border: 1px dashed rgba(197, 160, 89, 0.32);
+  border: 1px dashed rgba(16, 185, 129, 0.32);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.02);
-  color: #e0e0e0;
+  color: var(--text-primary);
   text-align: center;
 }
 

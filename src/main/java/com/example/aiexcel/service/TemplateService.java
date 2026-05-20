@@ -5,6 +5,7 @@ import com.example.aiexcel.repository.TemplateRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -180,6 +181,7 @@ public class TemplateService {
     /**
      * 根据分类获取模板
      */
+    @Cacheable(value = "templates", key = "#category")
     public List<Template> getTemplatesByCategory(String category) {
         try {
             List<Template> templates = templateRepository.findByCategory(category);

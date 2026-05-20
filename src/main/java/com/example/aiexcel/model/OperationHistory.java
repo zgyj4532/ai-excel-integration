@@ -44,6 +44,9 @@ public class OperationHistory {
     @Column(name = "reversible", nullable = false)
     private boolean reversible = true;
 
+    @Column(name = "undone", nullable = false)
+    private boolean undone = false;
+
     // Constructors
     public OperationHistory() {}
 
@@ -127,5 +130,13 @@ public class OperationHistory {
 
     public void setReversible(boolean reversible) {
         this.reversible = reversible;
+    }
+
+    public boolean isUndone() {
+        return undone;
+    }
+
+    public void setUndone(boolean undone) {
+        this.undone = undone;
     }
 }

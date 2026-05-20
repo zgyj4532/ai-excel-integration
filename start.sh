@@ -30,5 +30,9 @@ echo "Starting AI Excel Integration Application..."
 echo "Using QWEN_MODEL_NAME: ${QWEN_MODEL_NAME:-default}"
 echo "Using SERVER_PORT: ${SERVER_PORT:-8080}"
 
+# JVM内存优化配置 - 适用于2c2g服务器
+export MAVEN_OPTS="-Xms256m -Xmx768m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseStringDeduplication -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=./heapdump.hprof"
+echo "JVM Memory: Xms=256m, Xmx=768m (target: 2GB server)"
+
 # 运行应用
 mvn spring-boot:run

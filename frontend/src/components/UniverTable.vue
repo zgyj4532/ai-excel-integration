@@ -20,9 +20,10 @@ const containerId = 'univer-table-container'
 let disposeUniver: (() => void) | null = null
 
 onMounted(() => {
+  const isDark = (localStorage.getItem('app-theme') || 'dark') === 'dark'
   const { univer, univerAPI } = createUniver({
     locale: LocaleType.ZH_CN,
-    darkMode: true,
+    darkMode: isDark,
     theme: greenTheme,
     locales: {
       [LocaleType.ZH_CN]: mergeLocales(UniverPresetSheetsCoreZhCN),
@@ -55,7 +56,7 @@ onBeforeUnmount(() => {
 .univer-table {
   height: 100%;
   margin: 0;
-  background: #111827;
+  background: var(--bg-deep);
 }
 
 .univer-container {

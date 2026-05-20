@@ -342,22 +342,12 @@ onMounted(() => {
 
 <style scoped>
 .templates {
-  --bg-deep: #05070a;
-  --accent-gold: #c5a059;
-  --accent-teal: #19b394;
-  --text-primary: #e0e0e0;
-  --text-dim: rgba(224, 224, 224, 0.7);
-  --panel: rgba(255, 255, 255, 0.03);
-  --panel-strong: rgba(255, 255, 255, 0.06);
-  --grid-line: rgba(197, 160, 89, 0.12);
   display: flex;
   flex-direction: column;
   height: 100%;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(circle at 20% 20%, rgba(25, 179, 148, 0.1), transparent 32%),
-              radial-gradient(circle at 80% 60%, rgba(197, 160, 89, 0.08), transparent 38%),
-              linear-gradient(135deg, #06080d 0%, #0a0c11 50%, #05070a 100%);
+  background: var(--gradient-page);
   color: var(--text-primary);
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, -apple-system, sans-serif;
 }
@@ -423,7 +413,7 @@ onMounted(() => {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin: 0 0 6px 0;
-  color: var(--accent-gold);
+  color: var(--accent);
 }
 
 .muted {
@@ -456,7 +446,7 @@ onMounted(() => {
 
 .library-card:hover {
   transform: translateY(-6px);
-  border-color: var(--accent-gold);
+  border-color: var(--accent);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
@@ -480,7 +470,7 @@ onMounted(() => {
 }
 
 .json-preview {
-  background: rgba(8, 11, 18, 0.85);
+  background: var(--input-bg);
   color: var(--text-primary);
   padding: 10px;
   border-radius: 10px;
@@ -527,15 +517,15 @@ onMounted(() => {
 .export-btn,
 .import-btn,
 .apply-btn {
-  background: var(--accent-gold);
-  color: #0a0b0e;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: 0;
   padding: 10px 16px;
   border-radius: 10px;
   cursor: pointer;
   font-weight: 700;
   letter-spacing: 0.02em;
-  box-shadow: 0 10px 28px rgba(197, 160, 89, 0.26);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.26);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }

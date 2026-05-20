@@ -15,7 +15,7 @@ const html = computed(() => renderMarkdown(props.markdown))
 
 <style scoped>
 .markdown-report-view {
-  color: rgba(230, 238, 248, 0.95);
+  color: var(--text-primary);
   line-height: 1.7;
   word-break: break-word;
 }

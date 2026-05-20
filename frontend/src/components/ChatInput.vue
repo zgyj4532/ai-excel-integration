@@ -51,9 +51,9 @@ onMounted(()=>{
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #0f1720;
+  background: var(--panel);
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--grid-line);
 }
 .chat-input textarea {
   flex: 1;
@@ -61,14 +61,14 @@ onMounted(()=>{
   background: transparent;
   border: none;
   outline: none;
-  color: #cfd3da;
+  color: var(--text-primary);
   font-size: 14px;
   padding: 8px;
   padding-right: 64px; /* leave space for floating send button */
   line-height: 1.3;
 }
 .chat-input textarea::placeholder {
-  color: rgba(255,255,255,0.28);
+  color: var(--text-dim);
 }
 .send-btn {
   position: absolute;
@@ -79,8 +79,8 @@ onMounted(()=>{
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: #fff;
-  color: #0f1720;
+  background: var(--accent);
+  color: var(--text-on-accent);
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;

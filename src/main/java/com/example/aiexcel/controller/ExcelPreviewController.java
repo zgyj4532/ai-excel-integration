@@ -129,10 +129,17 @@ public class ExcelPreviewController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // 获取单元格范围信息
-            @SuppressWarnings("unchecked")
-            Map<String, Integer> range = (Map<String, Integer>) requestBody.get("range");
-            if (range == null) {
+            // 获取单元格范围信息（类型安全转换）
+            Object rangeObj = requestBody.get("range");
+            Map<String, Integer> range = new java.util.HashMap<>();
+            if (rangeObj instanceof Map<?, ?> rawRange) {
+                rawRange.forEach((k, v) -> {
+                    if (k instanceof String key && v instanceof Number num) {
+                        range.put(key, num.intValue());
+                    }
+                });
+            }
+            if (rangeObj == null) {
                 logger.error("Range information is null");
                 Map<String, Object> response = Map.of(
                     "success", false,

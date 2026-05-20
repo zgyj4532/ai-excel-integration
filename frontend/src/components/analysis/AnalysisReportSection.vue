@@ -99,7 +99,7 @@ defineEmits<{
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: rgba(230, 238, 248, 0.7);
+  color: var(--text-dim);
 }
 
 .report-content {
@@ -111,13 +111,13 @@ defineEmits<{
   font-size: 16px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #c5a059;
+  color: #10b981;
 }
 
 .analysis-report-section :deep(.muted) {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(230, 238, 248, 0.72);
+  color: var(--text-dim);
 }
 
 @keyframes slideUpReveal {

@@ -1,0 +1,39 @@
+:root, [data-theme="dark"] {
+  --bg-deep: #05070a;
+  --bg-body: #06080d;
+  --bg-body-mid: #0a0c11;
+  --accent: #10b981;
+  --accent-teal: #19b394;
+  --accent-hover: rgba(16, 185, 129, 0.9);
+  --text-primary: #e0e0e0;
+  --text-dim: rgba(224, 224, 224, 0.72);
+  --text-muted: rgba(230, 238, 248, 0.6);
+  --text-on-accent: #0a0b0e;
+  --panel: rgba(255, 255, 255, 0.03);
+  --panel-strong: rgba(255, 255, 255, 0.08);
+  --panel-hover: rgba(255, 255, 255, 0.02);
+  --grid-line: rgba(16, 185, 129, 0.12);
+  --input-bg: rgba(8, 11, 18, 0.85);
+  --border-subtle: rgba(16, 185, 129, 0.18);
+  --border-mid: rgba(16, 185, 129, 0.26);
+  --border-hover: rgba(16, 185, 129, 0.28);
+  --border-active: rgba(16, 185, 129, 0.36);
+  --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-elevated: 0 16px 44px rgba(0, 0, 0, 0.4);
+  --shadow-btn: 0 10px 26px rgba(0, 0, 0, 0.25);
+  --gradient-body: radial-gradient(circle at 18% 22%, rgba(25, 179, 148, 0.08), transparent 34%),
+                   radial-gradient(circle at 78% 72%, rgba(16, 185, 129, 0.08), transparent 38%),
+                   linear-gradient(135deg, #06080d 0%, #0a0c11 50%, #05070a 100%);
+  --gradient-page: radial-gradient(circle at 20% 20%, rgba(25, 179, 148, 0.1), transparent 32%),
+                   radial-gradient(circle at 80% 60%, rgba(16, 185, 129, 0.08), transparent 38%),
+                   linear-gradient(135deg, #06080d 0%, #0a0c11 50%, #05070a 100%);
+  --gradient-glow: radial-gradient(circle at 20% 20%, rgba(25, 179, 148, 0.05), transparent 55%);
+  --gradient-accent: linear-gradient(135deg, rgba(16, 185, 129, 0.82));
+  --scrollbar-thumb: linear-gradient(180deg, rgba(16, 185, 129, 0.85), rgba(25, 179, 148, 0.75));
+  --sidebar-active-bg: #0D1518;
+  --sidebar-active-border: inset 3px 0 0 0 rgba(16, 185, 129, 0.7);
+  --landing-bg: rgba(10, 11, 14, 0.95);
+  --landing-nav-bg: rgba(10, 11, 14, 0.85);
+  --divider: rgba(255, 255, 255, 0.03);
+  --table-border: rgba(255, 255, 255, 0.03);
+}

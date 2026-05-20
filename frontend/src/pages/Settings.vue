@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { checkServiceStatus, getSystemSettings, saveSystemSettings } from '@/services/api'
 import { fetchJson, setApiBaseUrl } from '@/services/apiClient'
@@ -108,7 +108,13 @@ const wsConfigStatus = ref(t('unknown'))
 // 系统配置
 const autoSave = ref(true)
 const notifications = ref(true)
-const theme = ref('dark')
+const theme = ref(localStorage.getItem('app-theme') || 'dark')
+
+// 主题切换：立即应用到 DOM 并持久化
+watch(theme, (val) => {
+  document.documentElement.setAttribute('data-theme', val)
+  localStorage.setItem('app-theme', val)
+}, { immediate: true })
 
 // 计算属性
 const backendStatusClass = computed(() => {
@@ -224,6 +230,12 @@ async function saveSystemConfig() {
 
 // 初始化
 onMounted(async () => {
+  // 立即应用 localStorage 中的主题（无需等待后端）
+  const savedTheme = localStorage.getItem('app-theme')
+  if (savedTheme) {
+    theme.value = savedTheme
+  }
+
   try {
     const result = await getSystemSettings(apiEndpoint.value)
     if (result.success) {
@@ -231,7 +243,7 @@ onMounted(async () => {
       apiEndpoint.value = data.apiEndpoint || apiEndpoint.value
       autoSave.value = data.autoSave ?? true
       notifications.value = data.notifications ?? true
-      theme.value = data.theme || 'dark'
+      if (data.theme) theme.value = data.theme
     }
   } catch (error) {
     console.error('获取系统设置失败:', error)
@@ -262,20 +274,10 @@ onMounted(async () => {
 
 <style scoped>
 .settings {
-  --bg-deep: #05070a;
-  --accent-gold: #c5a059;
-  --accent-teal: #19b394;
-  --text-primary: #e0e0e0;
-  --text-dim: rgba(224, 224, 224, 0.72);
-  --panel: rgba(255, 255, 255, 0.03);
-  --panel-strong: rgba(255, 255, 255, 0.08);
-  --grid-line: rgba(197, 160, 89, 0.12);
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: radial-gradient(circle at 18% 22%, rgba(25, 179, 148, 0.1), transparent 34%),
-              radial-gradient(circle at 78% 72%, rgba(197, 160, 89, 0.1), transparent 38%),
-              linear-gradient(135deg, #06080d 0%, #0a0c11 50%, #05070a 100%);
+  background: var(--gradient-page);
   color: var(--text-primary);
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
   position: relative;
@@ -284,11 +286,11 @@ onMounted(async () => {
 
 /* Match landing page scrollbar style */
 .settings::-webkit-scrollbar { width: 10px; }
-.settings::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-left: 1px solid rgba(197,160,89,0.15); }
+.settings::-webkit-scrollbar-track { background: var(--panel); border-left: 1px solid rgba(16,185,129,0.15); }
 .settings::-webkit-scrollbar-thumb {
-  background: #f5f5f5;
+  background: var(--scrollbar-thumb);
   border-radius: 10px;
-  border: 1px solid rgba(10,11,14,0.6);
+  border: 1px solid var(--bg-deep);
 }
 .settings::-webkit-scrollbar-thumb:hover { background: #ffffff; }
 
@@ -346,7 +348,7 @@ onMounted(async () => {
   border: 1px solid var(--grid-line);
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-elevated);
   position: relative;
   overflow: hidden;
   animation: slideUpReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -365,7 +367,7 @@ onMounted(async () => {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin: 0 0 6px 0;
-  color: var(--accent-gold);
+  color: var(--accent);
 }
 
 .muted { color: var(--text-dim); }
@@ -376,7 +378,7 @@ select {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--panel-strong);
-  background: rgba(8, 11, 18, 0.85);
+  background: var(--input-bg);
   color: var(--text-primary);
   margin-top: 10px;
   margin-bottom: 10px;
@@ -404,8 +406,8 @@ select {
 
 .check-status-btn,
 .save-btn {
-  background: var(--accent-gold);
-  color: #0a0b0e;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: 0;
   padding: 10px 16px;
   border-radius: 10px;
@@ -413,7 +415,7 @@ select {
   margin-top: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  box-shadow: 0 10px 28px rgba(197, 160, 89, 0.26);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.26);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }
@@ -421,7 +423,7 @@ select {
 .check-status-btn:hover,
 .save-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-elevated);
 }
 
 .config-item { margin-bottom: 12px; }

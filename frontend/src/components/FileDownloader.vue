@@ -237,8 +237,8 @@ const handleDownload = async () => {
 
 .btn-download {
   padding: 10px 16px;
-  background: #189079;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -247,7 +247,7 @@ const handleDownload = async () => {
 }
 
 .btn-download:hover:not(:disabled) {
-  background: #15754f;
+  filter: brightness(0.9);
 }
 
 .btn-download:disabled {

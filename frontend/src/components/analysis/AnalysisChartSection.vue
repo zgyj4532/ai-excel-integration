@@ -158,14 +158,14 @@ defineExpose({
 
 .range-label {
   font-size: 12px;
-  color: rgba(230, 238, 248, 0.7);
+  color: var(--text-dim);
 }
 
 .range-input {
   max-width: 320px;
-  background: rgba(8, 11, 18, 0.85);
+  background: var(--input-bg);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e0e0e0;
+  color: var(--text-primary);
   padding: 6px 10px;
   border-radius: 8px;
   width: 140px;
@@ -203,8 +203,8 @@ defineExpose({
 }
 
 .generate-report-btn {
-  background: #c5a059;
-  color: #0a0b0e;
+  background: #10b981;
+  color: var(--text-on-accent);
   border: 0;
   padding: 10px 16px;
   border-radius: 10px;
@@ -212,7 +212,7 @@ defineExpose({
   margin-top: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  box-shadow: 0 10px 28px rgba(197, 160, 89, 0.26);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.26);
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }
@@ -245,7 +245,7 @@ defineExpose({
 
 .preview-area {
   margin-top: 6px;
-  color: rgba(230, 238, 248, 0.9);
+  color: var(--text-primary);
   font-size: 13px;
   flex-direction: column;
   align-items: stretch;
@@ -257,7 +257,7 @@ defineExpose({
 }
 
 .chart-instructions {
-  color: rgba(230, 238, 248, 0.9);
+  color: var(--text-primary);
 }
 
 .analysis-chart-section :deep(h4) {
@@ -265,13 +265,13 @@ defineExpose({
   font-size: 16px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #c5a059;
+  color: #10b981;
 }
 
 .analysis-chart-section :deep(.muted) {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(230, 238, 248, 0.72);
+  color: var(--text-dim);
 }
 
 @keyframes slideUpReveal {

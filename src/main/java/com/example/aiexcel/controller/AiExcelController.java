@@ -154,10 +154,10 @@ public class AiExcelController {
                 return ResponseEntity.badRequest().body(null);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error processing excel-with-ai-download", e);
             return ResponseEntity.badRequest().body(null);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error processing excel-with-ai-download", e);
             return ResponseEntity.badRequest().body(null);
         }
     }

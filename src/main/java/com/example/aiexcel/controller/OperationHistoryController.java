@@ -1,5 +1,6 @@
 package com.example.aiexcel.controller;
 
+import com.example.aiexcel.dto.UndoRedoResult;
 import com.example.aiexcel.model.OperationHistory;
 import com.example.aiexcel.service.OperationHistoryService;
 import org.slf4j.Logger;
@@ -116,21 +117,22 @@ public class OperationHistoryController {
         logger.info("Received request to undo last operation for file: {}", fileId);
 
         try {
-            boolean success = operationHistoryService.undoLastOperation(fileId);
+            UndoRedoResult result = operationHistoryService.undoLastOperation(fileId);
 
             Map<String, Object> response;
-            if (success) {
+            if (result.isSuccess()) {
                 response = Map.of(
                     "success", true,
-                    "message", "Successfully undid last operation"
+                    "message", result.getMessage(),
+                    "restoredContent", result.getRestoredContent() != null ? result.getRestoredContent() : ""
                 );
                 logger.info("Successfully undid last operation for file: {}", fileId);
             } else {
                 response = Map.of(
                     "success", false,
-                    "error", "Could not undo last operation"
+                    "error", result.getMessage()
                 );
-                logger.warn("Could not undo last operation for file: {}", fileId);
+                logger.warn("Could not undo last operation for file: {}: {}", fileId, result.getMessage());
             }
 
             return ResponseEntity.ok(response);
@@ -152,21 +154,22 @@ public class OperationHistoryController {
         logger.info("Received request to redo last operation for file: {}", fileId);
 
         try {
-            boolean success = operationHistoryService.redoLastUndoneOperation(fileId);
+            UndoRedoResult result = operationHistoryService.redoLastUndoneOperation(fileId);
 
             Map<String, Object> response;
-            if (success) {
+            if (result.isSuccess()) {
                 response = Map.of(
                     "success", true,
-                    "message", "Successfully redid last operation"
+                    "message", result.getMessage(),
+                    "restoredContent", result.getRestoredContent() != null ? result.getRestoredContent() : ""
                 );
                 logger.info("Successfully redid last operation for file: {}", fileId);
             } else {
                 response = Map.of(
                     "success", false,
-                    "error", "Could not redo last operation"
+                    "error", result.getMessage()
                 );
-                logger.warn("Could not redo last operation for file: {}", fileId);
+                logger.warn("Could not redo last operation for file: {}: {}", fileId, result.getMessage());
             }
 
             return ResponseEntity.ok(response);

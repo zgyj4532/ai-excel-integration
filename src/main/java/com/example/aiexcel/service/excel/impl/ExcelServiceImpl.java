@@ -38,6 +38,25 @@ public class ExcelServiceImpl implements ExcelService {
     }
 
     /**
+     * 使用流式API加载大型工作簿（适用于XLSX格式）
+     * 通过SXSSFWorkbook限制内存中的行数，减少内存占用
+     * 适用于2c2g服务器环境
+     */
+    public Workbook loadWorkbookStreaming(InputStream inputStream, String fileName) throws IOException {
+        if (fileName != null && fileName.toLowerCase().endsWith(".xlsx")) {
+            try {
+                org.apache.poi.openxml4j.opc.OPCPackage pkg = org.apache.poi.openxml4j.opc.OPCPackage.open(inputStream);
+                XSSFWorkbook xssfWorkbook = new XSSFWorkbook(pkg);
+                // 使用SXSSFWorkbook，窗口大小100行，减少内存占用
+                return new org.apache.poi.xssf.streaming.SXSSFWorkbook(xssfWorkbook, 100);
+            } catch (Exception e) {
+                throw new IOException("Error loading workbook with streaming API", e);
+            }
+        }
+        return loadWorkbook(inputStream);
+    }
+
+    /**
      * 将CSV输入流转为Excel Workbook
      */
     private Workbook convertCsvToWorkbook(InputStream inputStream) throws IOException {
@@ -359,7 +378,7 @@ public class ExcelServiceImpl implements ExcelService {
                     cellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
                 }
             } catch (Exception e) {
-                // If color parsing fails, continue without color
+                logger.debug("颜色解析失败，跳过颜色设置: {}", color, e);
             }
         }
 
@@ -795,29 +814,10 @@ public class ExcelServiceImpl implements ExcelService {
     }
 
     /**
-     * 计算单元格公式并更新单元格值
-     * @param workbook 工作簿
-     * @param cell 要计算的单元格
-     */
-    @SuppressWarnings("unused")
-    private void evaluateFormulaCell(Workbook workbook, Cell cell) {
-        if (cell == null) {
-            return;
-        }
-
-        // 创建公式计算器
-        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-
-        // 计算公式并更新单元格值
-        evaluator.evaluateInCell(cell);
-    }
-
-    /**
      * 计算单元格公式并将结果设置回单元格（替换公式）
      * @param workbook 工作簿
      * @param cell 要计算的单元格
      */
-    @SuppressWarnings("unused")
     private void evaluateFormulaCellAndSetValue(Workbook workbook, Cell cell) {
         if (cell == null) {
             return;
@@ -853,6 +853,7 @@ public class ExcelServiceImpl implements ExcelService {
      * 计算整个工作簿中的所有公式并将结果设置回单元格（替换公式）
      * @param workbook 工作簿
      */
+    @Override
     public void evaluateAllFormulasInWorkbook(Workbook workbook) {
         FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
 

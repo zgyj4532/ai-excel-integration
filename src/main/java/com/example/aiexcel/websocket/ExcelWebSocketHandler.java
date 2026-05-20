@@ -5,6 +5,8 @@ import com.example.aiexcel.service.FileManagerService;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -16,8 +18,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @ServerEndpoint("/websocket/{clientId}")
-@SuppressWarnings("unused")
 public class ExcelWebSocketHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(ExcelWebSocketHandler.class);
 
     private static AiExcelIntegrationService aiExcelIntegrationService;
     private static FileManagerService fileManagerService;
@@ -54,19 +57,19 @@ public class ExcelWebSocketHandler {
         this.clientId = clientId;
         webSocketSet.put(clientId, this); // 加入set中
         addOnlineCount(); // 在线数加1
-        System.out.println("有新连接加入，当前在线人数为: " + getOnlineCount());
+        logger.info("有新连接加入，当前在线人数为: {}", getOnlineCount());
         
         // 发送连接成功消息
         try {
             sendMessage("{\"type\":\"connected\",\"message\":\"WebSocket connection established\",\"clientId\":\"" + clientId + "\"}");
         } catch (IOException e) {
-            System.out.println("连接建立时发送消息失败");
+            logger.warn("连接建立时发送消息失败");
         }
 
         // 尝试在握手参数中读取 userId 和 workspaceId，如果存在则设置对应工作区为公开
         try {
             if (fileManagerService == null) {
-                System.out.println("FileManagerService 未注入，无法设置工作区公开");
+                logger.warn("FileManagerService 未注入，无法设置工作区公开");
             } else {
                 Map<String, List<String>> params = session.getRequestParameterMap();
                 if (params != null) {
@@ -78,16 +81,15 @@ public class ExcelWebSocketHandler {
                         try {
                             Long wsId = Long.valueOf(wsIdStr);
                             boolean ok = fileManagerService.setWorkspacePublic(wsId, true, userId);
-                            System.out.println("尝试将工作区设为公开 — workspaceId=" + wsId + ", userId=" + userId + ", 结果=" + ok);
+                            logger.info("尝试将工作区设为公开 — workspaceId={}, userId={}, 结果={}", wsId, userId, ok);
                         } catch (NumberFormatException nfe) {
-                            System.out.println("解析 workspaceId 失败: " + wsIdStr);
+                            logger.warn("解析 workspaceId 失败: {}", wsIdStr);
                         }
                     }
                 }
             }
         } catch (Exception ex) {
-            System.out.println("设置工作区公开时发生异常: " + ex.getMessage());
-            ex.printStackTrace();
+            logger.error("设置工作区公开时发生异常", ex);
         }
     }
 
@@ -98,7 +100,7 @@ public class ExcelWebSocketHandler {
     public void onClose() {
         webSocketSet.remove(this.clientId); // 从set中删除
         subOnlineCount(); // 在线数减1
-        System.out.println("有一连接关闭，当前在线人数为: " + getOnlineCount());
+        logger.info("有一连接关闭，当前在线人数为: {}", getOnlineCount());
     }
 
     /**
@@ -106,7 +108,7 @@ public class ExcelWebSocketHandler {
      */
     @OnMessage
     public void onMessage(String message, Session session) {
-        System.out.println("来自客户端的消息: " + message);
+        logger.info("来自客户端的消息: {}", message);
         
         try {
             // 解析客户端发送的消息
@@ -116,22 +118,18 @@ public class ExcelWebSocketHandler {
             // 根据消息类型处理
             String messageType = request.getType();
             String command = request.getCommand();
-            String excelData = request.getExcelData();
-            
             if ("excel_command".equals(messageType)) {
-                // 处理Excel命令
-                handleExcelCommand(command, excelData);
+                handleExcelCommand(command);
             } else if ("analyze_data".equals(messageType)) {
-                // 处理数据分析
-                handleDataAnalysis(excelData, command);
+                handleDataAnalysis(command);
             }
             
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("处理WebSocket消息时发生异常", e);
             try {
                 sendMessage("{\"type\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
             } catch (IOException ioException) {
-                ioException.printStackTrace();
+                logger.error("发送错误消息失败", ioException);
             }
         }
     }
@@ -139,7 +137,7 @@ public class ExcelWebSocketHandler {
     /**
      * 处理Excel命令
      */
-    private void handleExcelCommand(String command, String excelData) {
+    private void handleExcelCommand(String command) {
         try {
             // 由于我们不能直接访问上传的文件，这里我们模拟处理过程
             // 在实际实现中，您需要存储客户端上传的Excel文件
@@ -155,14 +153,14 @@ public class ExcelWebSocketHandler {
             sendMessage(jsonResponse);
             
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("处理Excel命令时发生异常", e);
         }
     }
 
     /**
      * 处理数据分析
      */
-    private void handleDataAnalysis(String excelData, String analysisRequest) {
+    private void handleDataAnalysis(String analysisRequest) {
         try {
             String aiResponse = "This is a simulated analysis response for request: " + analysisRequest + 
                                ". In a real implementation, this would analyze the provided Excel data and return insights.";
@@ -176,14 +174,13 @@ public class ExcelWebSocketHandler {
             sendMessage(jsonResponse);
             
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("处理数据分析时发生异常", e);
         }
     }
 
     @OnError
     public void onError(Session session, Throwable error) {
-        System.out.println("发生错误");
-        error.printStackTrace();
+        logger.error("WebSocket发生错误", error);
     }
 
     /**
@@ -197,7 +194,7 @@ public class ExcelWebSocketHandler {
      * 群发自定义消息
      */
     public static void sendInfo(String message, @PathParam("clientId") String clientId) throws IOException {
-        System.out.println("推送消息到客户端: " + clientId + "，推送内容: " + message);
+        logger.info("推送消息到客户端: {}，推送内容: {}", clientId, message);
         
         for (String id : webSocketSet.keySet()) {
             try {
@@ -205,7 +202,7 @@ public class ExcelWebSocketHandler {
                 // 这里可以进行条件判断，只推送消息给特定的客户端
                 item.sendMessage(message);
             } catch (IOException e) {
-                continue;
+                logger.warn("推送消息到客户端 {} 失败: {}", id, e.getMessage());
             }
         }
     }

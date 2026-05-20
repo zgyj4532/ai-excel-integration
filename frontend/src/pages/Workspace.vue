@@ -16,7 +16,10 @@
         :has-file="hasFile"
         :saving="saving"
         :save-message="saveMessage"
+        :undoing="undoing"
+        :undo-message="undoMessage"
         @save="handleSaveClick"
+        @undo="handleUndoClick"
       >
         <template #overview>
           <WorkspaceOverviewTab :has-file="hasFile" @ready="handleUniverReady" />
@@ -63,7 +66,7 @@ import WorkspaceSidebarPanel from '@/components/workspace/WorkspaceSidebarPanel.
 import { useI18n } from 'vue-i18n'
 import FileDownloader from '../components/FileDownloader.vue'
 import ChatInput from '../components/ChatInput.vue'
-import { getExcelDataPreview, processExcelWithAI, processExcelAndChat, uploadExcel, chat, runAllApis } from '../services/aiService'
+import { getExcelDataPreview, processExcelWithAI, processExcelAndChat, uploadExcel, chat, runAllApis, undoLastOperation } from '../services/aiService'
 import { handleUserChat } from '../services/chatManager'
 
 const WorkspaceOverviewTab = defineAsyncComponent(() => import('@/components/workspace/tabs/WorkspaceOverviewTab.vue'))
@@ -95,6 +98,8 @@ const makeId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice
 const hasFile = computed(() => !!fileName.value)
 const saving = ref(false)
 const saveMessage = ref('')
+const undoing = ref(false)
+const undoMessage = ref('')
 
 type SnapshotOps = {
   createWorkbook?: (snapshot?: any) => any
@@ -183,6 +188,33 @@ async function handleSaveClick() {
   } finally {
     saving.value = false
     window.setTimeout(() => { saveMessage.value = '' }, 3000)
+  }
+}
+
+async function handleUndoClick() {
+  if (!hasFile.value || undoing.value) return
+  undoing.value = true
+  undoMessage.value = ''
+  try {
+    const fileId = lastSavedFileId.value || fileName.value
+    if (!fileId) {
+      undoMessage.value = t('noFileToUndo')
+      return
+    }
+    const result = await undoLastOperation(fileId)
+    if (result && result.success) {
+      undoMessage.value = t('undoSuccess')
+      // If the backend returns restored content, we could reload the file
+      // For now, just show success message
+    } else {
+      undoMessage.value = result?.error || t('undoFailed')
+    }
+  } catch (e:any) {
+    const msg = (e && e.message) || e || ''
+    undoMessage.value = t('undoFailed', { reason: msg })
+  } finally {
+    undoing.value = false
+    window.setTimeout(() => { undoMessage.value = '' }, 3000)
   }
 }
 
@@ -1133,10 +1165,10 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
 }
 
 .tab-btn.active {
-  background: #189079;
+  background: var(--accent);
   /* workspace accent color */
   border-color: transparent;
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .tab-btn:hover {
@@ -1150,9 +1182,9 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
   gap: 8px;
   padding: 8px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(197,160,89,0.32);
-  background: linear-gradient(135deg, rgba(25,179,148,0.12), rgba(197,160,89,0.12));
-  color: #e0e0e0;
+  border: 1px solid rgba(16,185,129,0.32);
+  background: linear-gradient(135deg, rgba(25,179,148,0.12), rgba(16,185,129,0.12));
+  color: var(--text-primary);
   cursor: pointer;
   box-shadow: 0 12px 28px rgba(0,0,0,0.32);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.2s ease, opacity 0.2s ease;
@@ -1161,8 +1193,8 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
 .save-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 16px 40px rgba(0,0,0,0.4);
-  border-color: rgba(197,160,89,0.52);
-  background: linear-gradient(135deg, rgba(197,160,89,0.16), rgba(25,179,148,0.18));
+  border-color: rgba(16,185,129,0.52);
+  background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(25,179,148,0.18));
 }
 
 .save-btn:disabled {
@@ -1183,13 +1215,13 @@ function handleSkipToken(tokenKey: string, msgId?: number, idx?: number, note?: 
 
 .empty-upload {
   height: 610px;
-  border: 1px dashed rgba(197,160,89,0.32);
+  border: 1px dashed rgba(16,185,129,0.32);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255,255,255,0.02);
-  color: #e0e0e0;
+  color: var(--text-primary);
   text-align: center;
 }
 

@@ -156,6 +156,14 @@ export async function chat(message: string) {
   });
 }
 
+export async function undoLastOperation(fileId: string) {
+  return fetchJson(`/api/history/undo/${fileId}`, { method: 'POST' });
+}
+
+export async function redoLastOperation(fileId: string) {
+  return fetchJson(`/api/history/redo/${fileId}`, { method: 'POST' });
+}
+
 // Combines data preview and AI processing:
 export async function processExcelAndChat(file?: File | null, command?: string, fileId?: string) {
   // 1) get parsed array preview via data analysis API

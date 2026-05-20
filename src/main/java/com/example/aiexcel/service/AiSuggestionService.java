@@ -430,7 +430,6 @@ public class AiSuggestionService {
     /**
      * 数据类型统计内部类
      */
-    @SuppressWarnings("unused")
     private static class DataTypeStats {
         private int count = 0;
         private int emptyCount = 0;

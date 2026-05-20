@@ -319,8 +319,8 @@ const downloadSampleXlsx = () => {
 
 .btn {
   padding: 8px 16px;
-  background: #189079;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -329,7 +329,7 @@ const downloadSampleXlsx = () => {
 }
 
 .btn:hover:not(:disabled) {
-  background: #15754f;
+  filter: brightness(0.9);
 }
 
 .btn:disabled {
@@ -338,14 +338,14 @@ const downloadSampleXlsx = () => {
 }
 
 .btn-primary {
-  background: #189079;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
 }
 
 .btn-link {
   padding: 8px 16px;
-  background: #189079;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -354,7 +354,7 @@ const downloadSampleXlsx = () => {
 }
 
 .btn-link:hover:not(:disabled) {
-  background: #15754f;
+  filter: brightness(0.9);
 }
 
 .btn-link:disabled {

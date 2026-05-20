@@ -100,8 +100,8 @@ const clvModel = computed({
 }
 
 .generate-report-btn {
-  background: #c5a059;
-  color: #0a0b0e;
+  background: #10b981;
+  color: var(--text-on-accent);
   border: 0;
   padding: 10px 16px;
   border-radius: 10px;
@@ -109,7 +109,7 @@ const clvModel = computed({
   margin-top: 0;
   font-weight: 700;
   letter-spacing: 0.02em;
-  box-shadow: 0 10px 28px rgba(197, 160, 89, 0.26);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.26);
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }
@@ -137,7 +137,7 @@ const clvModel = computed({
 }
 
 .options-label {
-  color: rgba(230, 238, 248, 0.7);
+  color: var(--text-dim);
   font-size: 12px;
 }
 
@@ -145,7 +145,7 @@ const clvModel = computed({
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: rgba(230, 238, 248, 0.88);
+  color: var(--text-primary);
   font-size: 13px;
 }
 

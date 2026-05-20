@@ -17,15 +17,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.example.aiexcel.config.EnvFile;
 
 @Service
 public class QwenAiService implements AiService {
 
-    private static final Logger logger = Logger.getLogger(QwenAiService.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(QwenAiService.class);
 
     private volatile String apiBaseUrl;
     private final String defaultModel;
@@ -42,9 +41,7 @@ public class QwenAiService implements AiService {
     }
 
     private void logExceptionWithTrace(Exception e, String context) {
-        StringWriter sw = new StringWriter();
-        e.printStackTrace(new PrintWriter(sw));
-        logger.severe(context + ": " + e.getMessage() + "\n" + sw.toString());
+        logger.error(context, e);
     }
 
     public QwenAiService(@Value("${qwen.api.api-key:}") String apiKeyFromConfig,
@@ -67,7 +64,7 @@ public class QwenAiService implements AiService {
         if (resolvedKey != null && !resolvedKey.isEmpty()) {
             String trimmed = resolvedKey.trim();
             if (!trimmed.startsWith("sk-")) {
-                logger.warning("Resolved API key does not start with 'sk-'. Ensure you are using a DashScope API key (sk-...).");
+                logger.warn("Resolved API key does not start with 'sk-'. Ensure you are using a DashScope API key (sk-...).");
             }
         }
         return resolvedKey;
@@ -82,7 +79,7 @@ public class QwenAiService implements AiService {
         boolean validBase = resolvedBase != null && resolvedBase.matches("^https?://[^/\\s]+.*$");
         if (!validBase) {
             String received = resolvedBase == null ? "<null>" : resolvedBase;
-            logger.warning("qwen.api.base-url appears invalid: '" + received + "'. Falling back to default base URL.");
+            logger.warn("qwen.api.base-url appears invalid: '" + received + "'. Falling back to default base URL.");
             return "https://dashscope.aliyuncs.com/compatible-mode/v1";
         }
         logger.info("qwen.api.base-url resolved to: " + resolvedBase);
@@ -105,7 +102,7 @@ public class QwenAiService implements AiService {
 
         // 检查API密钥 - 仅使用配置属性获取的值
         if (apiKey == null || apiKey.isEmpty()) {
-            logger.severe("API Key is not configured. Please set QWEN_API_KEY in .env file.");
+            logger.error("API Key is not configured. Please set QWEN_API_KEY in .env file.");
             throw new RuntimeException("API Key is not configured. Please set QWEN_API_KEY in .env file.");
         }
 
@@ -124,7 +121,7 @@ public class QwenAiService implements AiService {
             try {
                 logger.info("Qwen request -> url=" + apiBaseUrl + "/chat/completions" + ", model=" + qwenRequest.getModel() + ", apiKeyPresent=" + (apiKey != null && !apiKey.isEmpty()));
                 logger.info("Qwen API key (masked): " + maskKey(apiKey));
-                logger.fine("Qwen request body: " + requestBody);
+                logger.debug("Qwen request body: " + requestBody);
             } catch (Exception ignore) {
                 // 日志尽力而为，不能让日志抛出异常影响主流程
             }
@@ -151,21 +148,22 @@ public class QwenAiService implements AiService {
                 int status = httpResponse.getCode();
                 if (status != 200) {
                     // 更丰富的错误日志
-                    logger.severe("API request failed -> url="+ apiBaseUrl + "/chat/completions" + ", status=" + status + ", model=" + qwenRequest.getModel());
-                    logger.severe("Response body: " + body);
-                    logger.severe("API key (masked): " + maskKey(apiKey));
+                    logger.error("API request failed -> url="+ apiBaseUrl + "/chat/completions" + ", status=" + status + ", model=" + qwenRequest.getModel());
+                    logger.error("Response body: " + body);
+                    logger.error("API key (masked): " + maskKey(apiKey));
 
                     // 针对 401 提供可操作提示（参考 DashScope 文档）
                     if (status == 401) {
                         try {
                             if (body != null && body.contains("invalid_api_key")) {
-                                logger.warning("Invalid API key provided (invalid_api_key). Suggestions:");
-                                logger.warning(" - Ensure you're providing the correct API key (starts with 'sk-') and not a literal code snippet.");
-                                logger.warning(" - If you set the key via environment variables, prefer 'DASHSCOPE_API_KEY' or 'QWEN_API_KEY'.");
-                                logger.warning(" - Confirm the Base URL matches the key's region: use 'dashscope.aliyuncs.com' for China (Beijing) or 'dashscope-intl.aliyuncs.com' for Intl (Singapore).");
-                                logger.warning(" - If unsure, re-create or retrieve a fresh API key from DashScope console.");
+                                logger.warn("Invalid API key provided (invalid_api_key). Suggestions:");
+                                logger.warn(" - Ensure you're providing the correct API key (starts with 'sk-') and not a literal code snippet.");
+                                logger.warn(" - If you set the key via environment variables, prefer 'DASHSCOPE_API_KEY' or 'QWEN_API_KEY'.");
+                                logger.warn(" - Confirm the Base URL matches the key's region: use 'dashscope.aliyuncs.com' for China (Beijing) or 'dashscope-intl.aliyuncs.com' for Intl (Singapore).");
+                                logger.warn(" - If unsure, re-create or retrieve a fresh API key from DashScope console.");
                             }
-                        } catch (Exception ignore) {
+                        } catch (Exception logException) {
+                            logger.debug("解析401响应体时异常", logException);
                         }
                     }
 
@@ -180,15 +178,15 @@ public class QwenAiService implements AiService {
             try {
                 aiResponse = objectMapper.readValue(responseString, AiResponse.class);
             } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-                logger.severe("Error parsing AI response: " + e.getMessage());
-                logger.severe("Response content: " + responseString);
+                logger.error("Error parsing AI response: " + e.getMessage());
+                logger.error("Response content: " + responseString);
                 logExceptionWithTrace(e, "Error parsing AI response");
                 throw new RuntimeException("Error parsing AI response", e);
             }
 
             return aiResponse;
         } catch (IOException e) {
-            logger.severe("Error calling Qwen API: " + e.getMessage());
+            logger.error("Error calling Qwen API: " + e.getMessage());
             throw new RuntimeException("Error calling Qwen API", e);
         }
     }
@@ -207,7 +205,7 @@ public class QwenAiService implements AiService {
 
         // 如果没有配置 API Key，则不做请求，返回 null（表示未执行请求）
         if (apiKey == null || apiKey.isEmpty()) {
-            logger.warning("API Key is not configured for connection test.");
+            logger.warn("API Key is not configured for connection test.");
             return null;
         }
         return performProbe(apiKey, apiBaseUrl);
@@ -218,7 +216,7 @@ public class QwenAiService implements AiService {
         String key = (apiKeyOverride != null) ? apiKeyOverride.trim() : null;
         String base = resolveBaseUrl(baseUrlOverride);
         if (key == null || key.isEmpty()) {
-            logger.warning("testConnectionWith invoked without apiKey");
+            logger.warn("testConnectionWith invoked without apiKey");
             return null;
         }
         return performProbe(key, base);
@@ -242,13 +240,12 @@ public class QwenAiService implements AiService {
 
             return httpClient.execute(httpPost, httpResponse -> httpResponse.getCode());
         } catch (Exception e) {
-            logger.warning("Connection test failed: " + e.getMessage());
+            logger.warn("Connection test failed: " + e.getMessage());
             return null;
         }
     }
 
     // 内部类用于适配Qwen API格式
-    @SuppressWarnings("unused")
     @JsonAutoDetect(fieldVisibility = Visibility.ANY)
     private static class QwenRequest {
         private String model;

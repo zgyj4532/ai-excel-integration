@@ -1,0 +1,192 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-05-13",
+  "categories": {
+    "visualBrand": {
+      "name": "视觉与品牌层面",
+      "items": [
+        {
+          "id": "VB-01",
+          "title": "首屏信息降噪，增加留白",
+          "priority": "P0",
+          "description": "将AI·Excel和Data Flow标签改为hover交互，增加留白间距，锚点导航",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        },
+        {
+          "id": "VB-02",
+          "title": "品牌色调整为数据绿",
+          "priority": "P1",
+          "description": "主强调色从商务金向数据绿调整，增加微光效/粒子动效，图标统一为线性渐变描边",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        },
+        {
+          "id": "VB-03",
+          "title": "字体层级清晰化",
+          "priority": "P1",
+          "description": "主标题使用更重字重(900)，副标题使用细体(300-400)，英文slogan缩小字号",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        }
+      ]
+    },
+    "interaction": {
+      "name": "交互与体验层面",
+      "items": [
+        {
+          "id": "IX-01",
+          "title": "CTA按钮强化与动效",
+          "priority": "P0",
+          "description": "进入Workspace按钮增加hover动效，观看演示改为带播放图标按钮，文案更具转化力",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        },
+        {
+          "id": "IX-02",
+          "title": "核心能力卡片hover交互",
+          "priority": "P1",
+          "description": "卡片hover上浮translateY(-4px)、边框发光、阴影扩散，微交互动效，手风琴展开/收起",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        }
+      ]
+    },
+    "content": {
+      "name": "内容与信息架构层面",
+      "items": [
+        {
+          "id": "CT-01",
+          "title": "价值主张量化",
+          "priority": "P1",
+          "description": "改为量化价值主张如'效率提升10倍'，增加信任徽章",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue, frontend/src/i18n.ts",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        },
+        {
+          "id": "CT-02",
+          "title": "功能描述场景化",
+          "priority": "P2",
+          "description": "增加场景化描述替代技术术语，标签云，查看示例链接",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue, frontend/src/i18n.ts",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        },
+        {
+          "id": "CT-03",
+          "title": "增加社会证明区块",
+          "priority": "P2",
+          "description": "客户案例、用户评价轮播、实时数据展示",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        }
+      ]
+    },
+    "technical": {
+      "name": "技术实现层面",
+      "items": [
+        {
+          "id": "TC-01",
+          "title": "响应式与性能优化",
+          "priority": "P1",
+          "description": "移动端卡片堆叠适配，OLED深色对比检查(#0A0A0A替代纯黑)，SVG+CSS动画",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        },
+        {
+          "id": "TC-02",
+          "title": "卡片布局重构为Bento Box",
+          "priority": "P1",
+          "description": "采用CSS Grid grid-template-areas的错落卡片布局，参考Linear和Notion风格",
+          "isComplete": true,
+          "implementedIn": "frontend/src/pages/Landing.vue",
+          "testedWithBackend": true,
+          "testDate": "2026-05-13"
+        }
+      ]
+    }
+  },
+  "backendTasks": {
+    "undoRedo": {
+      "id": "BE-01",
+      "title": "OperationHistoryService undo/redo实现",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "src/main/java/com/example/aiexcel/service/OperationHistoryService.java"
+    },
+    "undoRedoFrontend": {
+      "id": "BE-08",
+      "title": "前端撤回功能接入",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "frontend/src/components/workspace/WorkspaceTabs.vue, frontend/src/services/aiService.ts, frontend/src/pages/Workspace.vue"
+    },
+    "memoryOptimization": {
+      "id": "BE-02",
+      "title": "2c2g内存优化",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "src/main/resources/application.properties, start.sh"
+    },
+    "apiPerformance": {
+      "id": "BE-03",
+      "title": "API性能优化",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "src/main/java/com/example/aiexcel/config/CacheConfig.java, PerformanceFilter.java"
+    },
+    "warningsFix": {
+      "id": "BE-04",
+      "title": "消除所有warnings",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "多文件 - QwenAiService, ExcelWebSocketHandler, ExcelServiceImpl等"
+    },
+    "logColoring": {
+      "id": "BE-05",
+      "title": "日志着色",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "src/main/resources/logback-spring.xml, src/main/java/com/example/aiexcel/config/ColoredLevelConverter.java"
+    },
+    "testCoverage": {
+      "id": "BE-06",
+      "title": "Java单元测试覆盖",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "src/test/java/com/example/aiexcel/unit/"
+    },
+    "pyFilesDeleted": {
+      "id": "BE-07",
+      "title": "删除.py文件并创建Java测试",
+      "isComplete": true,
+      "testedWithBackend": true,
+      "testDate": "2026-05-13",
+      "implementedIn": "删除7个.py文件，创建5个Java单元测试文件"
+    }
+  }
+}

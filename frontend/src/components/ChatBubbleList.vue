@@ -346,20 +346,20 @@ function splitAllApply(s: string) {
   border: 1px solid rgba(109,4,196,0.18) !important;
 }
 .bubble-row.ai .bubble {
-  background: rgba(255,255,255,0.04) !important;
-  color: #fff !important;
+  background: var(--panel) !important;
+  color: var(--text-primary) !important;
 }
 .bubble.placeholder { background: rgba(255,255,255,0.04) !important; color:transparent !important }
 .placeholder-dot { display:flex; gap:6px; align-items:center; }
-.placeholder-dot span { width:8px; height:8px; background: #fff; border-radius:50%; opacity:0.18; animation: blink 1s infinite }
+.placeholder-dot span { width:8px; height:8px; background: var(--text-primary); border-radius:50%; opacity:0.18; animation: blink 1s infinite }
 .placeholder-dot span:nth-child(2){ animation-delay:0.15s }
 .placeholder-dot span:nth-child(3){ animation-delay:0.3s }
 @keyframes blink{0%{opacity:0.18}50%{opacity:0.9}100%{opacity:0.18}}
 
 .apply-box { display:flex; flex-direction:column; align-items:center; gap:8px; }
-.apply-text { text-align:center; font-weight:600; padding:8px 12px; border-radius:8px; background: rgba(255,255,255,0.02); }
-.apply-text.applied { opacity:0.9; background: rgba(255,255,255,0.01); }
+.apply-text { text-align:center; font-weight:600; padding:8px 12px; border-radius:8px; background: var(--panel); color: var(--text-primary); }
+.apply-text.applied { opacity:0.9; background: var(--panel); }
 .apply-actions { display:flex; gap:8px }
-.btn-execute { background: linear-gradient(90deg,#178C76,#178C83); color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer }
-.btn-skip { background: #6b7280; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer }
+.btn-execute { background: linear-gradient(90deg,#178C76,#178C83); color:var(--text-on-accent); border:none; padding:6px 12px; border-radius:6px; cursor:pointer }
+.btn-skip { background: #6b7280; color:var(--text-on-accent); border:none; padding:6px 12px; border-radius:6px; cursor:pointer }
 </style>

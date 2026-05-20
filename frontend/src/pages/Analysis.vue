@@ -752,29 +752,48 @@ function onFinanceClick() {
 
 <style scoped>
 .analysis {
-  --bg-deep: #05070a;
-  --accent-gold: #c5a059;
-  --accent-teal: #19b394;
-  --text-primary: #e0e0e0;
-  --text-dim: rgba(224, 224, 224, 0.72);
-  --panel: rgba(255, 255, 255, 0.03);
-  --panel-strong: rgba(255, 255, 255, 0.08);
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 16px;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-page);
   color: var(--text-primary);
-  font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
+  font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, -apple-system, sans-serif;
 }
 
-.analysis > .topbar { grid-row: 1; }
-.analysis > .content { grid-row: 2; }
+.analysis::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(var(--grid-line) 1px, transparent 0);
+  background-size: 120px 120px;
+  opacity: 0.4;
+}
 
-/* 覆盖全局 .content 的横向 flex 布局，强制本页面垂直堆叠行 */
+.analysis > .topbar {
+  grid-row: 1;
+  position: relative;
+  z-index: 1;
+}
+
 .analysis > .content {
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.topbar h2 {
+  font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  animation: slideUpReveal 0.8s ease forwards;
 }
 
 .chart-suggestions-grid {
@@ -789,12 +808,22 @@ function onFinanceClick() {
   padding: 12px;
   background: var(--panel);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
   animation: slideUpReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.chart-suggestion-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(25, 179, 148, 0.05), transparent 55%);
+  pointer-events: none;
 }
 
 .chart-placeholder {
   height: 120px;
-  background: rgba(8, 11, 18, 0.85);
+  background: var(--input-bg);
   border-radius: 6px;
   display: flex;
   align-items: flex-start;
@@ -818,7 +847,7 @@ function onFinanceClick() {
 }
 
 .range-input {
-  background: rgba(8, 11, 18, 0.85);
+  background: var(--input-bg);
   border: 1px solid var(--panel-strong);
   color: var(--text-primary);
   padding: 6px 10px;
@@ -840,7 +869,7 @@ function onFinanceClick() {
 .chart-canvas {
   width: 100%;
   height: 220px;
-  background: rgba(8, 11, 18, 0.85);
+  background: var(--input-bg);
   border: 1px solid var(--panel-strong);
   border-radius: 8px;
   margin-bottom: 6px;
@@ -851,8 +880,8 @@ function onFinanceClick() {
 .rfm-btn,
 .clv-btn,
 .finance-btn {
-  background: var(--accent-gold);
-  color: #0a0b0e;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: 0;
   padding: 10px 16px;
   border-radius: 10px;
@@ -860,7 +889,7 @@ function onFinanceClick() {
   margin-top: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  box-shadow: 0 10px 28px rgba(197, 160, 89, 0.26);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.26);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   font-family: 'Space Grotesk', 'IBM Plex Mono', system-ui, sans-serif;
 }
@@ -881,6 +910,8 @@ function onFinanceClick() {
   width: 100%;
   display: grid;
   gap: 16px;
+  position: relative;
+  z-index: 1;
 }
 .row-first {
   grid-template-columns: 1fr;
@@ -912,10 +943,20 @@ function onFinanceClick() {
   border: 1px solid var(--panel-strong);
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
   animation: slideUpReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(25, 179, 148, 0.05), transparent 55%);
+  pointer-events: none;
+}
 .card-header { padding: 8px 8px 4px 8px; }
-.card-header h4 { margin: 0; font-size: 16px; font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-gold); }
+.card-header h4 { margin: 0; font-size: 16px; font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
 .card-header .muted { margin-top: 4px; font-size: 12px; color: var(--text-dim); }
 
 /* ensure card internals stack tightly */
@@ -1028,7 +1069,7 @@ function onFinanceClick() {
 .report-options label { display:flex; gap:6px; align-items:center; cursor:pointer; white-space:nowrap; }
 .report-options .options-label { font-weight:600; color: var(--text-primary); }
 .report-block { border:1px solid var(--panel-strong); border-radius:10px; padding:12px; margin-bottom:12px; background: var(--panel); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-.report-block h3 { margin:0 0 6px 0; font-size:16px; font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-gold); }
+.report-block h3 { margin:0 0 6px 0; font-size:16px; font-family: 'Orbitron', 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
 .report-block p { margin:0 0 6px 0; line-height:1.5; color: var(--text-primary); }
 .report-block.error { border-color: rgba(255,120,120,0.4); background: rgba(255,120,120,0.05); }
 .report-preview { margin-top:8px; background: rgba(255,255,255,0.03); border:1px solid var(--panel-strong); border-radius:8px; }
