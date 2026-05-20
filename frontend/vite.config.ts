@@ -26,6 +26,8 @@ export default defineConfig({
       }
     })()
   },
+  // Set base to ensure built assets use the application context path
+  base: process.env.VITE_BASE || process.env.SERVER_CONTEXT_PATH || '/InsightCloud/',
   build: {
     outDir: '../src/main/resources/static', // 关键：打包到后端静态资源目录
     emptyOutDir: true,

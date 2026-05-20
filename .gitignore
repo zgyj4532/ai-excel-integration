@@ -1,5 +1,8 @@
-# Maven
+# === Build outputs ===
 target/
+*.jar
+
+# === Maven auxiliary ===
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -10,9 +13,55 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# Compilation and IDE files
+# === IDE / editor ===
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.project
+.classpath
+.settings/
+
+# === Logs ===
+*.log
+app.log
+app_run.log
+app_start.log
+
+# === Environment / secrets ===
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# === OS generated files ===
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+._*
+
+# === Python / venv ===
+venv/
+ENV/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+
+# === Node / frontend ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Frontend build output ===
+frontend/dist/
+
+# === Misc generated / binary files ===
 *.class
-*.jar
 *.war
 *.ear
 *.zip
@@ -20,161 +69,30 @@ buildNumber.properties
 *.tar.gz
 *.tar.bz2
 *.tar.xz
-*.csv
-*.xlsx
-# IDE
-## Eclipse
-*.pydevproject
-.metadata
-bin/
-tmp/
-*.tmp
-*.bak
-*.swp
-*~.nib
-local.properties
-.settings/
-.loadpath
-.recommenders
-.classpath
-.project
-.cproject
-.svn/
-.cache/
-.che/
-.nope/
-.apt_generated/
-.factorypath
-.jsdtscope
-.jmx
-.jmxbid
-.jmxview
-.jmxviewlayout
-.jmxviewstate
-.jmxviewstate.bak
-.jmxviewstate.tmp
-.jmxviewstate~.nib
-## IntelliJ IDEA
-.idea
-*.iws
-*.iml
-*.ipr
-*.properties
-*.log
-## NetBeans
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-## VS Code
-.vscode/
 
-# Logs
-*.log
-app.log
-app_run.log
-app_start.log
-fixed_app.log
-
-# Environment specific
-.env
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Icon?
-.directory
-*.nfs
-*~
-.#*
-.#
-*#
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-VolumeIcon.icns
-.apdisk
-
-# Excel and data files (specific test files - keep templates that might be useful)
-final_formula_test.xlsx
-final_test_calculated_values.xlsx
-final_test_formula_calculated.xlsx
-final_test_new_approach.xlsx
-final_test_result.xlsx
-final_test_success.xlsx
-final_test_with_new_fix.xlsx
-modified_age_group_file.xlsx
-modified_file.xlsx
-modified_salary_file.xlsx
-modified_simple_formula.xlsx
-modified_simple_test_data.csv
-modified_simple_test_data.xlsx
-simple_test_data.csv
-test_customer_data.csv
-test_data.csv
-test_data.xlsx
-test_financial_data.csv
-test_total_formula.xlsx
+# === Excel / test artifacts (kept out of repo) ===
 *.xls
-# Python virtual environments
-venv/
-ENV/
-env/
-.venv/
+*.xlsx
+*.csv
+final_*.xlsx
+modified_*.xlsx
+test_*.xlsx
 
-# Python cache
-__pycache__/
-*.py[cod]
-*$py.class
-*$pyc
-*$pyo
-.Python
-pyvenv.cfg
-include/
-lib/
-lib64/
-bin/activate
-bin/activate.csh
-bin/activate.fish
-bin/easy_install
-bin/easy_install-*
-bin/pip
-bin/pip-*
-bin/python
-bin/python[0-9]
-bin/ipython
-bin/ipython[0-9]
-
-# SASS/SCSS
-.sass-cache/
-*.css.map
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-src/main/resources/static
-src/main/resources/static/index.html
-storage/uploads/index.json
+# === Storage / uploads (runtime) ===
 storage/uploads/
+storage/uploads/index.json
 
 UNIVER_RENDERING_DEBUG_BACKUP.md
 
 # claude
 claude.md
+# === Runtime / PID files ===
+*.pid
+run.pid
+
+# === Deployment / static artifacts to ignore ===
+# keep deploy/ and packaged frontend static files out of VCS on this environment
+deploy/
+src/main/resources/static/
+
+# End of .gitignore
